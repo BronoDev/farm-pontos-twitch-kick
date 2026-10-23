@@ -2,15 +2,20 @@
   "manifest_version": 2,
   "name": "Chat Leve — Twitch e Kick",
   "description": "Twitch em chat e Kick com vídeo na menor qualidade disponível, em segundo plano.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "permissions": [
     "storage",
     "tabs",
     "https://kick.com/*",
-    "https://www.kick.com/*"
+    "https://www.kick.com/*",
+    "alarms",
+    "notifications",
+    "https://www.twitch.tv/*"
   ],
   "background": {
     "scripts": [
+      "rewards.js",
+      "automation.js",
       "core.js",
       "background.js"
     ],
@@ -41,6 +46,17 @@
         "kick-player.js"
       ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://kick.com/*",
+        "https://www.kick.com/*",
+        "https://www.twitch.tv/*"
+      ],
+      "js": [
+        "site-status.js"
+      ],
+      "run_at": "document_idle"
     }
   ],
   "options_ui": {
@@ -50,5 +66,8 @@
   "browser_action": {
     "default_title": "Chat Leve",
     "default_popup": "popup.html"
+  },
+  "icons": {
+    "48": "icon.png"
   }
 }

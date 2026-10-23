@@ -7,22 +7,82 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <header><span class="eyebrow">TWITCH + KICK</span><h1>Chat Leve<span>●</span></h1><p>Seus canais em segundo plano.</p></header>
+  <header><span class="eyebrow">TWITCH + KICK · POKEIDLE</span><h1>Chat Leve<span aria-hidden="true">●</span></h1><p>Seus canais, bônus e resgates em um lugar.</p></header>
   <main>
-    <form id="add-form">
-      <label>Plataforma<select id="platform"><option value="kick">Kick</option><option value="twitch">Twitch</option></select></label>
-      <label class="grow">Canal ou link<input id="channel" placeholder="yetz ou https://kick.com/yetz" required maxlength="200" autocomplete="off"></label>
-      <button type="submit">Adicionar</button>
-    </form>
-    <label class="video-option"><input id="kick-live" type="checkbox" checked><span>Kick: reproduzir live e tentar a menor qualidade disponível</span></label>
-    <p class="hint">A opção vale também para canais Kick já cadastrados. Alterá-la reinicia as sessões Kick abertas. Twitch continua apenas no chat.</p>
-    <p id="error" role="alert" hidden></p>
+    <p id="error" role="alert" tabindex="-1" hidden></p>
     <p id="android-note" class="hint mobile-note" hidden>No Android, mudar de app, bloquear a tela ou economizar bateria pode pausar as lives. A extensão não impede a suspensão do navegador.</p>
-    <div class="bulk-actions" aria-label="Controle de todos os canais"><button id="start-all">Iniciar todos</button><button id="stop-all" class="secondary">Fechar todos</button></div>
-    <p id="summary" role="status" class="hint"></p>
-    <p class="hint">Abas silenciosas sem tirar o foco. O vídeo da Kick consome rede e processamento mesmo em segundo plano. Se o player bloquear o início automático, abra a aba e clique em reproduzir.</p>
-    <section aria-label="Seus canais"><div class="section-title"><h2>Seus canais</h2><button id="refresh" class="secondary">Atualizar</button></div><div id="channels"></div></section>
-    <aside><strong>Reprodução ≠ pontos confirmados</strong><p>Faça login na plataforma pelo navegador. Os bônus dependem das regras do canal, do PokeIdle e da plataforma. Confira o saldo antes e depois de usar.</p></aside>
+    <section aria-label="Sessões">
+      <form id="add-form" class="channel-form">
+        <label>Plataforma<select id="platform"><option value="kick">Kick</option><option value="twitch">Twitch</option></select></label>
+        <label class="grow">Canal ou link<input id="channel" placeholder="yetz ou https://kick.com/yetz" required maxlength="200" autocomplete="off"></label>
+        <button type="submit">Adicionar</button>
+      </form>
+      <label class="check-option"><input id="kick-live" type="checkbox" checked><span>Kick: reproduzir live e tentar a menor qualidade disponível</span></label>
+      <p class="hint">Alterar essa opção reinicia as sessões Kick abertas. Twitch continua apenas no chat.</p>
+      <div class="bulk-actions" aria-label="Controle de todos os canais"><button id="start-all">Iniciar todos</button><button id="stop-all" class="secondary">Fechar todos</button></div>
+      <p id="summary" role="status" class="hint"></p>
+      <p id="queue-summary" class="hint"></p>
+      <div class="section-title"><h2>Seus canais</h2><button id="refresh" class="secondary">Atualizar</button></div>
+      <div id="channels"></div>
+    </section>
+
+    <section class="overview" aria-label="Resumo de recompensas"><div><span class="eyebrow">XP REGISTRADO</span><strong id="xp-total">Sem comparação</strong><span class="hint">Variação dos saldos manuais</span></div><div><span class="eyebrow">BÔNUS PRONTOS</span><strong id="bonus-total">0</strong><span class="hint">Conforme os requisitos cadastrados</span></div></section>
+
+    <details id="alerts-panel"><summary>Avisos <span id="alert-count" class="count">0</span></summary><div class="panel-body"><div id="alerts" aria-live="polite"></div></div></details>
+
+    <details id="bonuses-panel"><summary>Checklist de bônus e resgates</summary><div class="panel-body">
+      <p class="hint">Cadastre as regras e a fonte de cada bônus. Marcar como resgatado registra sua confirmação; não envia um resgate à plataforma.</p>
+      <div id="bonuses"></div>
+      <form id="bonus-form" class="stacked-form">
+        <h3 id="bonus-form-title">Cadastrar bônus</h3>
+        <label>Canal<select id="bonus-channel" required></select></label>
+        <label>Nome do bônus<input id="bonus-title" required maxlength="120" placeholder="Nome exibido pelo canal ou PokeIdle"></label>
+        <label>Requisitos reais<textarea id="bonus-requirements" maxlength="2000" rows="3" placeholder="Descreva o que precisa ser feito"></textarea></label>
+        <label>Link da regra ou do resgate<input id="bonus-source" type="url" maxlength="1000" placeholder="https://…"></label>
+        <div class="form-grid"><label>Tempo exigido (min)<input id="bonus-minutes" type="number" min="0" max="10080" step="1" value="0" required></label><label>Custo em pontos<input id="bonus-points" type="number" min="0" step="1" value="0" required></label><label>Intervalo entre resgates (min)<input id="bonus-cooldown" type="number" min="0" max="525600" step="1" value="0" required></label><label>Prazo, se houver<input id="bonus-expiry" type="datetime-local"></label></div>
+        <label class="check-option"><input id="bonus-verified" type="checkbox"><span>Regras conferidas no serviço ou na fonte indicada</span></label>
+        <label class="check-option"><input id="bonus-requirements-met" type="checkbox"><span>Requisitos cumpridos (conferi no serviço)</span></label>
+        <div class="actions"><button id="bonus-submit" type="submit">Cadastrar bônus</button><button id="bonus-cancel" type="button" class="secondary" hidden>Cancelar edição</button></div>
+      </form>
+    </div></details>
+
+    <details id="history-panel"><summary>Histórico de XP e pontos</summary><div class="panel-body">
+      <p class="hint">Leia o saldo no serviço oficial e registre aqui. Os valores não são consultados automaticamente. Use o mesmo tipo de saldo e a mesma conta em cada comparação.</p>
+      <form id="measurement-form" class="stacked-form">
+        <label>Saldo de<select id="measurement-channel" required></select></label>
+        <div class="form-grid"><label>Saldo de XP<input id="measurement-xp" type="number" min="0" step="1" placeholder="Opcional"></label><label>Saldo de pontos<input id="measurement-points" type="number" min="0" step="1" placeholder="Opcional"></label></div>
+        <label>Horário da leitura<input id="measurement-at" type="datetime-local" required></label>
+        <label>Observação<input id="measurement-note" maxlength="500" placeholder="Ex.: antes de iniciar a sessão"></label>
+        <button type="submit">Registrar saldo manual</button>
+      </form>
+      <h3>Variação por canal</h3><div id="earnings"></div>
+      <h3>Leituras registradas</h3><div id="measurements"></div>
+    </div></details>
+
+    <details id="schedule-panel"><summary>Agenda das oportunidades</summary><div class="panel-body">
+      <p class="hint">Use horários confirmados nas regras do bônus. O navegador precisa estar em execução; a agenda não confirma que um canal está ao vivo.</p>
+      <p id="schedule-timezone" class="hint"></p>
+      <div class="automation-bar"><p id="automation-state" role="status" class="hint"></p><button id="toggle-automation" class="secondary" type="button">Pausar agenda</button></div>
+      <div id="schedules"></div>
+      <form id="schedule-form" class="stacked-form">
+        <fieldset><legend>Canais da oportunidade</legend><div id="schedule-channels" class="channel-checks"></div></fieldset>
+        <div class="form-grid"><label>Início<input id="schedule-start" type="datetime-local" required></label><label>Fim<input id="schedule-end" type="datetime-local" required></label></div>
+        <button type="submit">Agendar sessões</button>
+      </form>
+    </div></details>
+
+    <details id="settings-panel"><summary>Limites de consumo e recuperação</summary><div class="panel-body">
+      <p class="hint">A fila respeita os limites e a prioridade de cada canal. Salvar limites também ajusta as sessões abertas; os canais excedentes voltam para a fila. O uso de CPU e memória depende das páginas e não é medido pela extensão.</p>
+      <form id="settings-form" class="stacked-form">
+        <div class="form-grid"><label>Máximo de abas gerenciadas<input id="max-concurrent" type="number" min="1" max="12" step="1" value="3" required></label><label>Máximo de vídeos Kick<input id="max-kick-lives" type="number" min="1" max="12" step="1" value="2" required></label></div>
+        <label>Encerrar sessão após (min; 0 = sem prazo)<input id="session-minutes" type="number" min="0" max="1440" step="1" value="0" required></label>
+        <label class="check-option"><input id="notifications-enabled" type="checkbox" checked><span>Notificações de lembretes, quando o navegador permitir</span></label>
+        <label class="check-option"><input id="auto-reconnect" type="checkbox"><span>Tentar recuperar sessões com falha, respeitando pausas e limites</span></label>
+        <button type="submit">Salvar limites</button>
+      </form>
+    </div></details>
+
+    <aside><strong>Reprodução ≠ XP confirmado</strong><p>Confira login, regras e saldos nas plataformas. A lista de bônus e o histórico são registros seus; o tempo de aba aberta não comprova recompensa recebida.</p></aside>
     <a href="https://pokeidle.io/app" target="_blank" rel="noopener noreferrer">Abrir PokeIdle ↗</a>
   </main>
   <footer>Dados salvos neste navegador · Sem servidor próprio</footer>

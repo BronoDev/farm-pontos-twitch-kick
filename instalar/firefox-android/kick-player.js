@@ -24,6 +24,7 @@
       if (stopped || location.href !== originalUrl) { cleanup(); return; }
       const result = await send('kickTelemetry', { sample: {
         playing: !!video && !video.paused && !video.ended && video.readyState >= 3,
+        error: !!video?.error,
         height: video?.videoHeight || 0,
         targetHeight,
         qualityStatus

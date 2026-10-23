@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const checking = process.argv.includes('--check');
-const assets = ['core.js', 'background.js', 'popup.js', 'popup.html', 'popup.css', 'kick-quality.js', 'kick-player.js'];
+const assets = ['rewards.js', 'automation.js', 'core.js', 'background.js', 'popup.js', 'popup.html', 'popup.css', 'kick-quality.js', 'kick-player.js', 'site-status.js', 'icon.png'];
 const browsers = ['firefox', 'chromium', 'opera-gx', 'firefox-android'];
 
 export async function expectedFiles(browser) {
@@ -12,10 +12,11 @@ export async function expectedFiles(browser) {
   const manifest = browser === 'opera-gx' ? 'chromium' : browser;
   files.set('manifest.json', await readFile(path.join(root, 'manifests', `${manifest}.json`), 'utf8'));
   for (const file of assets) {
+    if (file.endsWith('.png')) { files.set(file, await readFile(path.join(root, 'src', file))); continue; }
     let source = await readFile(path.join(root, 'src', file), 'utf8');
-    if (browser.startsWith('firefox') && file === 'core.js') source = source.replace(/^export /gm, '');
-    if (file === 'kick-quality.js') source = source.replace(/^export /gm, '');
-    if (browser.startsWith('firefox') && file === 'background.js') source = source.replace(/^import \{ createController \} from '\.\/core\.js';\n/, '');
+    if (browser.startsWith('firefox') && ['core.js', 'rewards.js', 'automation.js'].includes(file)) source = source.replace(/^export /gm, '');
+    if (['kick-quality.js', 'site-status.js'].includes(file)) source = source.replace(/^export /gm, '');
+    if (browser.startsWith('firefox') && ['core.js', 'background.js'].includes(file)) source = source.replace(/^import .* from .*;\n/gm, '');
     files.set(file, source);
   }
   return files;
@@ -29,7 +30,8 @@ export async function build(check = checking) {
     for (const [file, content] of files) {
       const destination = path.join(dir, file);
       if (check) {
-        if (await readFile(destination, 'utf8') !== content) throw new Error(`Arquivo desatualizado: instalar/${browser}/${file}. Execute npm run package.`);
+        const actual = await readFile(destination);
+        if (!actual.equals(Buffer.isBuffer(content) ? content : Buffer.from(content))) throw new Error(`Arquivo desatualizado: instalar/${browser}/${file}. Execute npm run package.`);
       } else await writeFile(destination, content);
     }
     const unexpected = (await readdir(dir)).filter(file => !files.has(file));

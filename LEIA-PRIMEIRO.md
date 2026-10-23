@@ -59,3 +59,11 @@ Se ainda houver pop-ups da versão anterior, clique em **Fechar todos** e depois
 Esta versão precisa de acesso às páginas `kick.com` para executar o controle local do player. Após recarregar, autorize esse acesso no navegador quando solicitado; depois clique em **Iniciar todos** para migrar os canais Kick existentes. **Fechar todos** continua encerrando também as lives. Você pode desmarcar a opção de vídeo para voltar ao modo de chat.
 
 A qualidade automática depende dos controles oferecidos pela Kick e ainda requer validação no site real. O player não reproduz uma resolução menor do que as variantes transmitidas pelo canal. Vídeo em segundo plano pode exigir um primeiro clique manual para iniciar. Detalhes em [docs/KICK-VIDEO.md](docs/KICK-VIDEO.md).
+
+## Versão 0.6: bônus, agenda e assinatura nova
+
+O painel agora inclui checklist de bônus, histórico **manual** de XP/pontos, avisos, links de resgate, agenda e limites com fila. Cadastre as regras conferidas, registre os saldos no serviço e use o resumo para escolher os próximos passos. O aplicativo não resgata recompensas automaticamente nem consulta uma API de XP.
+
+Ao atualizar, autorize as novas permissões de alarmes, notificações e acesso às páginas Twitch quando solicitado. **Fechar todos** também pausa a agenda; clique em **Retomar agenda** ou **Iniciar todos** para voltar à automação. Veja o [README](README.md) para usar os controles.
+
+Mesmo que você tenha um XPI assinado da versão anterior, os arquivos novos precisam de outra assinatura. O fluxo preparado usa sua conta AMO e as variáveis seguras `WEB_EXT_API_KEY` e `WEB_EXT_API_SECRET`. Leia [ASSINATURA-MOZILLA.md](docs/ASSINATURA-MOZILLA.md). Os ZIPs deste repositório continuam sendo pacotes de desenvolvimento; só um XPI efetivamente retornado e validado pelo Firefox é uma instalação assinada.

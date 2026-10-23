@@ -46,3 +46,9 @@ Não há serviço nativo Android, bloqueio de suspensão, execução garantida c
 Os testes locais cobrem APIs simuladas e layouts móveis em Chromium, não o Firefox Android real. Veja [VALIDACAO.md](VALIDACAO.md).
 
 Referências usadas: [compatibilidade MDN de tabs](https://github.com/mdn/browser-compat-data/blob/main/webextensions/api/tabs.json), [metadados Gecko Android](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/manifest.json/browser_specific_settings) e o guia da Mozilla acima.
+
+## Versão 0.6 e assinatura universal
+
+A distribuição Android agora também reúne checklist, leituras manuais de XP/pontos, alertas, limites e agenda. As limitações de execução do Android permanecem: alarmes podem atrasar durante suspensão e não há serviço nativo que mantenha o aparelho acordado.
+
+Há um fluxo de assinatura **universal Firefox desktop + Android**, a partir desta mesma pasta, em [ASSINATURA-MOZILLA.md](ASSINATURA-MOZILLA.md). Ter um XPI assinado antigo ou uma conta Mozilla não assina as alterações automaticamente. A versão nova só estará assinada quando o serviço retornar um novo XPI. Confirme ID, versão, propriedade da conta e instalação no aparelho real.
