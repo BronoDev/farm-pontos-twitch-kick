@@ -38,12 +38,18 @@ Entre na Twitch/Kick **no próprio Opera GX**: o login de outro navegador não �
 
 Entre na Twitch/Kick no mesmo navegador. Abra **Chat Leve** pelo menu de extensões, adicione um canal (por exemplo `https://kick.com/yetz`) e clique em **Iniciar** ou **Iniciar todos**. Não é necessário instalar Node, Python ou executar comandos para usar.
 
-Os chats são abas silenciosas em segundo plano, sem novas janelas de pop-up. **Fechar todos** encerra as abas gerenciadas e conserva sua lista para abrir novamente. As abas continuam visíveis na barra do navegador; este modo não cria chats completamente invisíveis.
+Na Kick, a opção de vídeo vem ativada: abre a live em uma aba silenciosa e tenta escolher a menor qualidade pelo player oficial. Na Twitch, abre somente o chat. Ambas ficam em segundo plano, sem novas janelas de pop-up. **Fechar todos** encerra as abas gerenciadas e conserva sua lista para abrir novamente. As abas continuam visíveis na barra do navegador; este modo não cria chats completamente invisíveis.
 
-O status indica a aba aberta; confira pontos e XP nas plataformas. Detalhes em [README.md](README.md).
+Clique em **Atualizar** para ver a última amostra de reprodução/resolução da Kick. Se o vídeo não iniciar, abra sua aba e clique em reproduzir. Se não conseguir ajustar automaticamente a qualidade, selecione a menor opção no player. Confira pontos e XP nas plataformas. Detalhes em [README.md](README.md).
 
 ## Atualizar uma instalação existente
 
 Baixe o novo pacote do seu navegador e extraia em uma pasta fixa. No Opera GX/Chrome/Edge, substitua os arquivos da pasta que você já carregou e clique em **Recarregar** no cartão da extensão. Isso mantém o caminho e permite preservar os canais. No Firefox, use **Recarregar** em `about:debugging` enquanto a instalação temporária existir; após encerrar o navegador, carregue o manifesto novamente.
 
 Se ainda houver pop-ups da versão anterior, clique em **Fechar todos** e depois em **Iniciar todos**. Não remova a extensão antes de atualizar, para evitar apagar seus dados locais.
+
+## Atualização 0.4: vídeo da Kick
+
+Esta versão precisa de acesso às páginas `kick.com` para executar o controle local do player. Após recarregar, autorize esse acesso no navegador quando solicitado; depois clique em **Iniciar todos** para migrar os canais Kick existentes. **Fechar todos** continua encerrando também as lives. Você pode desmarcar a opção de vídeo para voltar ao modo de chat.
+
+A qualidade automática depende dos controles oferecidos pela Kick e ainda requer validação no site real. O player não reproduz uma resolução menor do que as variantes transmitidas pelo canal. Vídeo em segundo plano pode exigir um primeiro clique manual para iniciar. Detalhes em [docs/KICK-VIDEO.md](docs/KICK-VIDEO.md).

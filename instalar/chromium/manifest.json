@@ -1,10 +1,36 @@
 {
   "manifest_version": 3,
   "name": "Chat Leve — Twitch e Kick",
-  "description": "Gerencie chats em abas silenciosas de segundo plano, sem player de vídeo.",
-  "version": "0.3.0",
+  "description": "Twitch em chat e Kick com vídeo na menor qualidade disponível, em segundo plano.",
+  "version": "0.4.0",
   "minimum_chrome_version": "109",
-  "permissions": ["storage", "tabs"],
-  "background": { "service_worker": "background.js", "type": "module" },
-  "action": { "default_title": "Chat Leve", "default_popup": "popup.html" }
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Chat Leve",
+    "default_popup": "popup.html"
+  },
+  "host_permissions": [
+    "https://kick.com/*",
+    "https://www.kick.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://kick.com/*",
+        "https://www.kick.com/*"
+      ],
+      "js": [
+        "kick-quality.js",
+        "kick-player.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
 }

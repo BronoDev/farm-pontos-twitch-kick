@@ -5,7 +5,8 @@ const execute = createController(api);
 let queue = Promise.resolve();
 api.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== api.runtime.id) return false;
-  queue = queue.then(() => execute(message));
+  if (sender.tab && !['kickContext', 'kickTelemetry'].includes(message.type)) return false;
+  queue = queue.then(() => execute(message, sender));
   queue.then(state => sendResponse({ ok: true, state }), error => sendResponse({ ok: false, error: error.message }));
   queue = queue.catch(() => {});
   return true;

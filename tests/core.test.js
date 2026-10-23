@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { channel, chatUrl, createController } from '../src/core.js';
 
-function browser() {
-  const data = {};
+function browser(kickLive = false) {
+  const data = { kickLive };
   const tabs = new Map();
   const opened = [];
   const removed = [];
@@ -182,4 +182,76 @@ test('migra sessão antiga de pop-up para aba em segundo plano', async () => {
   assert.deepEqual(b.removed, [50]);
   assert.equal(result.sessions['kick:yetz'].mode, 'background');
   assert.equal(b.opened[0].active, false);
+});
+
+test('Kick com vídeo abre canal completo e Twitch continua somente no chat', async () => {
+  const b = browser(true);
+  await b.run({ type: 'add', platform: 'kick', input: 'yetz' });
+  await b.run({ type: 'add', platform: 'twitch', input: 'outro' });
+  const state = await b.run({ type: 'startAll' });
+  assert.equal(b.opened[0].url, 'https://kick.com/yetz');
+  assert.equal(b.opened[1].url, 'https://www.twitch.tv/popout/outro/chat?popout=');
+  assert.equal(state.sessions['kick:yetz'].media, 'live');
+  assert.equal(state.sessions['twitch:outro'].media, 'chat');
+  assert.equal(b.tabs.get(1).muted, true);
+  await b.run({ type: 'startAll' });
+  assert.equal(b.opened.length, 2);
+  await b.run({ type: 'stopAll' });
+  assert.equal(b.tabs.size, 0);
+});
+
+test('alterar opção Kick migra sessões existentes sem abrir canais fechados ou reiniciar Twitch', async () => {
+  const b = browser();
+  for (const name of ['yetz', 'fechado']) await b.run({ type: 'add', platform: 'kick', input: name });
+  await b.run({ type: 'add', platform: 'twitch', input: 'outro' });
+  await b.run({ type: 'start', id: 'kick:yetz' });
+  await b.run({ type: 'start', id: 'twitch:outro' });
+  const state = await b.run({ type: 'setKickLive', enabled: true });
+  assert.deepEqual(b.removed, [1]);
+  assert.equal(b.opened.at(-1).url, 'https://kick.com/yetz');
+  assert.equal(state.sessions['twitch:outro'].tabId, 2);
+  assert.equal(state.sessions['kick:fechado'], undefined);
+  const reverted = await b.run({ type: 'setKickLive', enabled: false });
+  assert.equal(b.opened.at(-1).url, 'https://kick.com/popout/yetz/chat');
+  assert.equal(reverted.kickLive, false);
+});
+
+test('após atualização, iniciar todos migra chat Kick antigo para vídeo', async () => {
+  const b = browser(true);
+  await b.run({ type: 'add', platform: 'kick', input: 'yetz' });
+  b.tabs.set(50, { id: 50, url: 'https://kick.com/popout/yetz/chat' });
+  await b.api.storage.local.set({ sessions: { 'kick:yetz': { tabId: 50, mode: 'background', openedAt: 1 } } });
+  const state = await b.run({ type: 'startAll' });
+  assert.deepEqual(b.removed, [50]);
+  assert.equal(state.sessions['kick:yetz'].media, 'live');
+  assert.equal(b.opened[0].url, 'https://kick.com/yetz');
+});
+
+test('status de player aceita apenas amostras da aba gerenciada e URL correta', async () => {
+  const b = browser(true);
+  await b.run({ type: 'add', platform: 'kick', input: 'yetz' });
+  await b.run({ type: 'startAll' });
+  const sender = { tab: { id: 1 }, url: 'https://kick.com/yetz' };
+  assert.deepEqual(await b.run({ type: 'kickContext' }, sender), { managed: true });
+  assert.deepEqual(await b.run({ type: 'kickContext' }, { tab: { id: 99 }, url: sender.url }), { managed: false });
+  assert.deepEqual(await b.run({ type: 'kickContext' }, { ...sender, url: 'https://kick.com/other' }), { managed: false });
+  assert.deepEqual(await b.run({ type: 'kickContext' }), { managed: false });
+  await b.run({ type: 'kickTelemetry', sample: { playing: true, height: 160, targetHeight: 160, qualityStatus: 'requested' } }, sender);
+  const state = await b.run({ type: 'status' });
+  assert.equal(state.sessions['kick:yetz'].playback.height, 160);
+  assert.equal(state.sessions['kick:yetz'].playback.playing, true);
+  await b.run({ type: 'stopAll' });
+  assert.deepEqual(await b.run({ type: 'kickTelemetry', sample: { playing: true } }, sender), { managed: false });
+});
+
+test('dados inválidos do player não viram resolução ou sucesso falsos', async () => {
+  const b = browser(true);
+  await b.run({ type: 'add', platform: 'kick', input: 'yetz' });
+  await b.run({ type: 'startAll' });
+  await b.run({ type: 'kickTelemetry', sample: { playing: 'yes', height: -1, targetHeight: Infinity, qualityStatus: 'points-confirmed' } }, { tab: { id: 1 }, url: 'https://kick.com/yetz' });
+  const playback = (await b.run({ type: 'status' })).sessions['kick:yetz'].playback;
+  assert.equal(playback.playing, false);
+  assert.equal(playback.height, 0);
+  assert.equal(playback.targetHeight, 0);
+  assert.equal(playback.qualityStatus, 'pending');
 });

@@ -1,6 +1,6 @@
 # Chat Leve — Twitch e Kick
 
-Extensão local para Firefox, Chrome, Edge e Opera GX que organiza canais e abre os **chats oficiais em abas silenciosas de segundo plano**, sem abrir o player nem janelas de pop-up. Feita em JavaScript, sem frameworks, pacotes externos ou servidor próprio. O navegador continua necessário: cada chat tem seu próprio consumo de memória e rede.
+Extensão local para Firefox, Chrome, Edge e Opera GX. Abre a **live oficial da Kick com vídeo**, tentando selecionar a menor qualidade disponível, e mantém a Twitch em **chat apenas**. As abas são silenciosas e abrem em segundo plano, sem novas janelas. Feita em JavaScript, sem frameworks, pacotes externos ou servidor próprio. Cada página continua consumindo memória e rede.
 
 ## Instalar no seu computador
 
@@ -24,12 +24,12 @@ Entre na Twitch e na Kick no mesmo perfil do navegador. Abra a extensão, escolh
 
 ### Iniciar e fechar tudo
 
-- **Iniciar todos:** abre uma aba inativa de chat por canal cadastrado, sem trocar a aba atual, e silencia o áudio. Canais já abertos pela extensão não são duplicados.
+- **Iniciar todos:** abre uma aba inativa por canal cadastrado (Kick com vídeo, Twitch com chat), sem trocar a aba atual, e silencia o áudio. Canais já abertos pela extensão não são duplicados.
 - **Fechar todos:** fecha as abas gerenciadas, mantém a lista para iniciar novamente e preserva outras abas do navegador. Se você navegou para outro site em uma aba gerenciada, ela também é preservada.
-- **Iniciar / Fechar chat:** controle individual por canal.
-- **Atualizar:** verifica quais abas ainda existem; não verifica autenticação, conexão com o servidor ou pontos.
+- **Iniciar / Fechar:** controle individual por canal.
+- **Atualizar:** verifica quais abas ainda existem e mostra a última amostra enviada pelo player da Kick, quando disponível. Não verifica autenticação, conexão com o servidor ou pontos.
 
-As abas continuam funcionando quando você fecha o painel da extensão. Elas ficam na barra de abas, em segundo plano: **não são processos invisíveis nem uma conexão direta de chat sem navegador**. Não há player, janelas de pop-up, temporizadores de consulta ou bloqueio da suspensão de abas. O consumo depende das páginas de chat, de quantos canais você abre e do navegador; não há redução de memória medida ou garantida. Fechar todos encerra as abas gerenciadas; a liberação de memória segue o gerenciamento do navegador.
+As abas continuam funcionando quando você fecha o painel da extensão. Elas ficam na barra de abas, em segundo plano: **não são processos invisíveis nem uma conexão direta de chat sem navegador**. Não há janelas de pop-up nem bloqueio da suspensão de abas. O modo Kick com vídeo usa o player oficial e faz tentativas limitadas de ajustar a qualidade durante a inicialização; depois, relata eventos do vídeo, sem consulta contínua por temporizador. O consumo depende das páginas e do vídeo, de quantos canais você abre e do navegador; não há redução de memória medida ou garantida. Fechar todos encerra as abas gerenciadas; a liberação de memória segue o gerenciamento do navegador.
 
 Se algum canal falhar ao iniciar ou fechar, os demais continuam sendo processados e o painel mostra um aviso. As sessões abertas são salvas a cada canal, permitindo fechar os resultados parciais. Ao iniciar uma sessão de uma versão antiga, seu pop-up é substituído pela aba em segundo plano. Depois de reiniciar o navegador, reabra pelo painel se necessário; não há inicialização automática.
 
@@ -54,27 +54,35 @@ docs/                   → detalhes de validação e limitações
 
 As pastas `instalar/` e os arquivos `downloads/` já vêm prontos. Não selecione `src/` nem `manifests/` no navegador. Para alterações no código, regenere as distribuições com `npm run package`.
 
+## Kick com vídeo na menor qualidade
+
+A opção **Kick: reproduzir live e tentar a menor qualidade disponível** vem ativada e também vale para canais Kick já cadastrados. Clique em **Iniciar todos** após atualizar para migrar os chats antigos. A Twitch continua no modo de chat. Desativar a opção retorna a Kick ao chat apenas; alterar a opção reinicia somente as sessões Kick abertas.
+
+O script local tenta silenciar e iniciar o elemento de vídeo e escolher a menor resolução numérica visível no menu oficial de qualidade. Ele não usa APIs privadas nem inventa parâmetros de resolução. Se a live só oferecer 360p, não há como transformá-la em 144p apenas encolhendo o player. Controles diferentes dos reconhecidos exigem ajuste manual.
+
+O painel separa **menor qualidade solicitada** de **resolução recebida** (`videoHeight`) e mostra o horário da última amostra. Uma opção solicitada não comprova que o player mudou a resolução. Amostras antigas não são monitoramento em tempo real.
+
+Se aparecer **reprodução não confirmada**, abra a aba da Kick, confira seu login e clique em reproduzir. O navegador pode bloquear ou adiar autoplay em abas inativas. Se a qualidade automática ficar indisponível, escolha a menor opção no próprio player. O script faz tentativas limitadas durante cerca de 36 segundos de inicialização, sem insistir indefinidamente e sem forçar reprodução depois de você pausar. Não garante recuperação de canais offline, substituições posteriores do player, anúncios ou mudanças de rota.
+
+**A automação foi testada em um player simulado; os controles atuais da Kick real não puderam ser verificados por bloqueio de rede da nuvem.** Confira a resolução e a reprodução no seu navegador. Veja [o guia de vídeo Kick](docs/KICK-VIDEO.md).
+
 ## Pontos de canal e PokeIdle
 
-Esta versão gerencia os chats; **não implementa uma integração com a API do PokeIdle, não consulta saldo, não clica em bônus e não confirma presença no servidor**. “Chat aberto” indica somente que a aba existe na URL esperada, não que o usuário está autenticado ou conectado ao chat.
+Esta versão não integra a API do PokeIdle, não consulta saldo, não clica em bônus e não confirma presença no servidor. Uma aba aberta ou um player que reporta reprodução não comprovam concessão de pontos.
 
-O usuário relatou que o pop-up de chat da Kick acumula pontos no canal `yetz`. Isso não foi confirmado independentemente neste ambiente. A rota usada é `https://kick.com/popout/yetz/chat`. Na Twitch é `https://www.twitch.tv/popout/yetz/chat?popout=`. Se uma plataforma mudar sua rota, pode ser necessário atualizar a extensão.
+1. Anote o saldo e confirme que o canal está ao vivo.
+2. Na Kick, mantenha a opção de vídeo ativada e confira que a live realmente reproduz. Na Twitch, o modo disponível continua sendo chat apenas.
+3. Aguarde o intervalo normal de concessão e confira o saldo no serviço oficial/PokeIdle.
+4. Se não aumentar, confira login, player e regras atuais do bônus. Não interprete o tempo com a aba aberta como pontos recebidos.
 
-Para verificar no seu computador:
-
-1. Anote o saldo de pontos e XP e confirme que o canal está ao vivo.
-2. Feche o player e mantenha apenas a aba do chat aberta, com sua conta conectada.
-3. Aguarde o intervalo normal de concessão do canal e confira novamente o saldo no site oficial/PokeIdle.
-4. Se não aumentar, confira o login, erros do chat e as regras atuais do bônus. Não interprete o tempo com a aba aberta como pontos recebidos.
-
-Suspender abas, economizadores de memória e o computador em suspensão podem afetar o funcionamento. A extensão não impede suspensão, não mantém vídeo oculto e não simula eventos de audiência. Os critérios de pontos e XP pertencem às plataformas e ao bot. Não há garantia de acúmulo só com chat em ambas as plataformas.
+Economizadores de memória, suspensão de abas, restrições de reprodução em segundo plano e o computador em suspensão podem interromper o vídeo e os bônus. A extensão não simula audiência ou falsifica visibilidade. O uso de CPU/memória/rede não foi medido e aumenta com o número de vídeos abertos; reproduzir lives tem custo mesmo na menor resolução.
 
 ## Privacidade e permissões
 
 - `storage`: guarda localmente nomes de canais e identificadores de abas. Não sincroniza com outros dispositivos.
 - `tabs`: verifica se a aba registrada ainda está no chat correto antes de reutilizá-la ou fechá-la. Essa permissão permite acesso aos endereços das abas; o código consulta apenas os identificadores que criou.
 
-Sem telemetria, scripts injetados, leitura de mensagens, coleta de cookies ou envio de credenciais. A extensão abre as páginas oficiais, que fazem suas próprias conexões de rede. Os arquivos da extensão não carregam bibliotecas remotas.
+O acesso a `kick.com` e `www.kick.com` permite executar os scripts locais de controle do player. Eles só atuam em abas de live Kick gerenciadas pela extensão, conferindo identificador da aba e URL; não operam em suas abas pessoais da Kick. As amostras de reprodução e resolução ficam em `storage.local`, neste navegador, e não são enviadas a um servidor próprio. Não há leitura de mensagens, coleta de cookies, senhas ou envio de credenciais. A extensão abre as páginas oficiais, que fazem suas próprias conexões de rede. Os arquivos da extensão não carregam bibliotecas remotas.
 
 ## Desenvolvimento
 

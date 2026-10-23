@@ -28,20 +28,50 @@ function matchesChat(url, item) {
   catch { return false; }
 }
 
+function sessionUrl(item, session) {
+  return item.platform === 'kick' && session.media === 'live'
+    ? `https://kick.com/${channel(item.platform, item.name).name}`
+    : chatUrl(item);
+}
+
+function matchesSession(url, item, session) {
+  try { return new URL(url).href === new URL(sessionUrl(item, session)).href; }
+  catch { return false; }
+}
+
 function createController(api) {
   async function read() {
-    const { channels = [], sessions = {} } = await api.storage.local.get(['channels', 'sessions']);
-    return { channels, sessions };
+    const { channels = [], sessions = {}, kickLive = true } = await api.storage.local.get(['channels', 'sessions', 'kickLive']);
+    return { channels, sessions, kickLive };
   }
   async function alive(session, item) {
     if (!session) return false;
     try {
       const tab = await api.tabs.get(session.tabId);
-      return matchesChat(tab.pendingUrl || tab.url, item);
+      return matchesSession(tab.pendingUrl || tab.url, item, session);
     } catch { return false; }
   }
-  return async function execute(message) {
+  return async function execute(message, sender = {}) {
     const state = await read();
+    if (message.type === 'kickContext' || message.type === 'kickTelemetry') {
+      const item = state.channels.find(c => c.platform === 'kick' && state.sessions[c.id]?.tabId === sender.tab?.id);
+      const session = item && state.sessions[item.id];
+      if (!session || session.media !== 'live' || !matchesSession(sender.url || sender.tab?.url, item, session)) return { managed: false };
+      if (message.type === 'kickTelemetry') {
+        const sample = message.sample || {};
+        const statuses = ['pending', 'requested', 'unavailable', 'autoplay-blocked'];
+        const dimension = value => Number.isInteger(value) && value >= 0 && value <= 16384 ? value : 0;
+        session.playback = {
+          playing: sample.playing === true,
+          height: dimension(sample.height),
+          targetHeight: dimension(sample.targetHeight),
+          qualityStatus: statuses.includes(sample.qualityStatus) ? sample.qualityStatus : 'pending',
+          checkedAt: Date.now()
+        };
+        await api.storage.local.set(state);
+      }
+      return { managed: true };
+    }
     const warnings = [];
     async function save() { await api.storage.local.set(state); }
     for (const [id, session] of Object.entries(state.sessions)) {
@@ -58,13 +88,14 @@ function createController(api) {
     }
     async function start(item) {
       const existing = state.sessions[item.id];
-      if (existing?.mode === 'background') return;
+      const media = item.platform === 'kick' && state.kickLive ? 'live' : 'chat';
+      if (existing?.mode === 'background' && (existing.media || 'chat') === media) return;
       // Migra os pop-ups das versões anteriores quando o usuário inicia o canal.
       if (existing) await stop(item);
-      const tab = await api.tabs.create({ url: chatUrl(item), active: false });
+      const tab = await api.tabs.create({ url: sessionUrl(item, { media }), active: false });
       if (!Number.isInteger(tab?.id)) throw new Error('O navegador não retornou a aba do chat.');
       // Salva imediatamente: mesmo uma falha posterior pode ser encerrada pelo painel.
-      state.sessions[item.id] = { tabId: tab.id, openedAt: Date.now(), mode: 'background' };
+      state.sessions[item.id] = { tabId: tab.id, openedAt: Date.now(), mode: 'background', media };
       await save();
       try { await api.tabs.update(tab.id, { muted: true }); }
       catch { warnings.push(`${item.name}: não foi possível silenciar a aba. Verifique o áudio no navegador.`); }
@@ -82,6 +113,11 @@ function createController(api) {
       if (message.type === 'start') await start(item);
       else await stop(item);
       if (message.type === 'remove') state.channels = state.channels.filter(c => c.id !== item.id);
+    } else if (message.type === 'setKickLive') {
+      if (typeof message.enabled !== 'boolean') throw new Error('Opção de vídeo inválida.');
+      state.kickLive = message.enabled;
+      await save();
+      for (const item of state.channels.filter(c => c.platform === 'kick' && state.sessions[c.id])) await apply(item, start);
     } else if (message.type === 'startAll' || message.type === 'stopAll') {
       // Cada resultado é salvo antes do próximo canal; uma falha não interrompe os demais.
       for (const item of state.channels) await apply(item, message.type === 'startAll' ? start : stop);
