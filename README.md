@@ -2,6 +2,8 @@
 
 Extensão local para organizar sessões, bônus e resgates. A Kick abre o player oficial em segundo plano e tenta a menor qualidade disponível. A Twitch cadastrada manualmente usa chat; o modo automático PokeIdle pode abrir a live Twitch com vídeo silencioso a partir dos sinais exibidos no próprio jogo. O painel reúne checklist de bônus, leituras manuais de XP/pontos, alertas, agenda e uma fila com limites de consumo. Não há servidor próprio ou dependências de aplicação para instalar.
 
+Veja a [prévia do painel no computador](docs/imagens/painel-desktop.png), com dados de teste, e o guia de [configuração da interface](docs/INTERFACE.md).
+
 ## Instalação
 
 Comece em **[LEIA-PRIMEIRO.md](LEIA-PRIMEIRO.md)**.
@@ -17,10 +19,20 @@ Chrome/Edge/Opera GX desktop: extraia o pacote, abra a página de extensões do 
 
 Os ZIPs são fontes de desenvolvimento sem assinatura. Para uma instalação Firefox permanente, use um **XPI da versão nova retornado pela Mozilla**. Um XPI antigo assinado não cobre código alterado. O fluxo de assinatura não listada usa uma distribuição universal para desktop e Android: [ASSINATURA-MOZILLA.md](docs/ASSINATURA-MOZILLA.md). Android requer navegador compatível e tem procedimento próprio: [ANDROID.md](docs/ANDROID.md). Opera GX/Chrome móveis não carregam esse pacote como as versões de PC.
 
+## Painel no computador e opções configuradas
+
+O painel tem uma visualização compacta no menu da extensão e pode ser aberto em uma aba para usar a largura disponível no computador. Em telas menores, as seções passam para uma coluna.
+
+Os canais e seus controles ficam em destaque. As opções de vídeo Kick aparecem depois de adicionar um canal Kick. O PokeIdle começa com uma configuração curta; os detalhes de canais, regra e sincronização aparecem quando houver uma leitura da página.
+
+Em **Personalizar painel**, escolha os recursos que quer mostrar: checklist de bônus, histórico manual de XP/pontos e agenda. A escolha fica salva neste navegador. Ao atualizar uma instalação que já tem registros, o painel correspondente continua disponível. Ocultar uma seção conserva seus dados e não desativa uma agenda existente.
+
+Prioridade e diagnóstico de cada canal ficam nos detalhes do próprio canal. O resumo de recompensas aparece conforme os recursos escolhidos; avisos aparecem quando há pendências. Veja [INTERFACE.md](docs/INTERFACE.md) para configurar a apresentação.
+
 ## Bônus, saldos e resgates
 
 1. Faça login na Twitch/Kick e no PokeIdle no navegador que usará a extensão.
-2. Adicione seus canais e cadastre bônus com requisitos, fonte, tempo, custo em pontos, intervalo de resgate e prazo. Você também pode importar as informações de bônus exibidas pelo widget PokeIdle; o projeto não preenche um catálogo inventado de regras.
+2. Adicione seus canais e habilite o checklist em **Personalizar painel**. Cadastre bônus com requisitos, fonte, tempo, custo em pontos, intervalo de resgate e prazo. Você também pode importar as informações de bônus exibidas pelo widget PokeIdle; o projeto não preenche um catálogo inventado de regras.
 3. Marque separadamente que **conferiu as regras** e que **cumpriu os requisitos no serviço**. Tempo com uma aba aberta aparece como estimativa e não libera um bônus sozinho.
 4. No histórico, registre o saldo inicial de XP/pontos lido no serviço e uma leitura posterior. A extensão calcula variação e XP/h entre as leituras, avisa quando o saldo diminui e evita somar saldo global com saldos de canais.
 5. Quando o checklist e os saldos indicarem disponibilidade, o painel pode notificar. **Conferir resgate** abre o link cadastrado; concluir a ação ocorre no site oficial. **Marcar resgatado** registra sua confirmação e inicia o cooldown. Não concede XP nem gasta pontos automaticamente. Após um resgate com custo, registre o novo saldo: o saldo anterior não é reutilizado para sugerir outro resgate.
@@ -70,7 +82,7 @@ O painel distingue **qualidade solicitada** de **resolução recebida**. Não cr
 
 ## Dados e permissões
 
-- `storage`: canais, fila, checklist, leituras manuais, horários, avisos e amostras ficam neste navegador.
+- `storage`: canais, fila, checklist, leituras manuais, horários, avisos, amostras e preferências de apresentação ficam neste navegador.
 - `tabs`: cria/fecha apenas abas gerenciadas e confere sua URL; preserva abas pessoais e abas reaproveitadas para outro site.
 - `alarms`: agenda e verificação periódica de limites/avisos com o navegador aberto.
 - `notifications`: lembretes locais; se indisponíveis, os avisos permanecem no painel.
@@ -95,6 +107,7 @@ python3 scripts/test-player.py
 python3 scripts/test-health.py
 python3 scripts/test-mobile-ui.py
 python3 scripts/test-dashboard.py
+python3 scripts/test-desktop-ui.py
 python3 scripts/test-pokeidle-reader.py
 python3 scripts/test-pokeidle-dashboard.py
 ```

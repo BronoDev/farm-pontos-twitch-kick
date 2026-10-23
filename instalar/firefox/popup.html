@@ -7,43 +7,36 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <header><span class="eyebrow">TWITCH + KICK · POKEIDLE</span><h1>Chat Leve<span aria-hidden="true">●</span></h1><p>Seus canais, bônus e resgates em um lugar.</p></header>
+<div class="app-shell">
+  <header class="app-header">
+    <div class="brand"><span class="brand-symbol" aria-hidden="true">cl<span></span></span><div><span class="eyebrow">TWITCH + KICK</span><h1>Chat Leve</h1></div></div>
+    <button id="open-dashboard" class="secondary" type="button">Abrir painel <span aria-hidden="true">↗</span></button>
+  </header>
   <main>
     <p id="error" role="alert" tabindex="-1" hidden></p>
-    <p id="android-note" class="hint mobile-note" hidden>No Android, mudar de app, bloquear a tela ou economizar bateria pode pausar as lives. A extensão não impede a suspensão do navegador.</p>
-    <section aria-label="Sessões">
-      <form id="add-form" class="channel-form">
-        <label>Plataforma<select id="platform"><option value="kick">Kick</option><option value="twitch">Twitch</option></select></label>
-        <label class="grow">Canal ou link<input id="channel" placeholder="yetz ou https://kick.com/yetz" required maxlength="200" autocomplete="off"></label>
-        <button type="submit">Adicionar</button>
-      </form>
-      <label class="check-option"><input id="kick-live" type="checkbox" checked><span>Kick: reproduzir live e tentar a menor qualidade disponível</span></label>
-      <p class="hint">Alterar essa opção reinicia as sessões Kick abertas. Twitch manual usa chat; canais automáticos do PokeIdle usam a live.</p>
-      <section id="pokeidle-panel" class="pokeidle-panel" aria-labelledby="pokeidle-heading">
-        <div class="section-title"><h2 id="pokeidle-heading">Twitch do PokeIdle</h2><button id="open-pokeidle" class="secondary" type="button">Abrir PokeIdle</button></div>
-        <label class="check-option"><input id="pokeidle-enabled" type="checkbox" checked><span>Automatizar Twitch do PokeIdle</span></label>
-        <p class="hint">Mantenha o PokeIdle aberto. Canais que ele indicar ao vivo, com bônus e faltantes entram na fila para reproduzir a live.</p>
-        <p id="pokeidle-status" role="status" class="hint"></p>
-        <p id="pokeidle-error" class="hint" hidden></p>
-        <div class="pokeidle-metrics" aria-label="Última lista do PokeIdle"><div><strong id="pokeidle-official-count">0</strong><span>Canais oficiais</span></div><div><strong id="pokeidle-live-bonus-count">0</strong><span>Ao vivo com bônus</span></div><div><strong id="pokeidle-missing-count">0</strong><span>Marcados faltantes</span></div></div>
-        <p id="pokeidle-sessions" class="hint"></p>
-        <p id="pokeidle-waiting" class="hint mobile-note" hidden></p>
-        <div class="pokeidle-rule"><span class="eyebrow">REGRA EXIBIDA PELO POKEIDLE</span><p id="pokeidle-rule-text">Ainda sem regra recebida.</p><p class="hint">A regra e os sinais da página não confirmam XP creditado. Confira o saldo no serviço oficial.</p></div>
-        <div class="actions"><button id="refresh-pokeidle" class="secondary" type="button">Sincronizar agora</button></div>
-        <details id="pokeidle-list-panel"><summary>Ver canais da origem</summary><div class="panel-body"><label>Mostrar<select id="pokeidle-filter"><option value="all">Todos os canais</option><option value="eligible">Ao vivo, com bônus e faltantes</option><option value="live-bonus">Ao vivo com bônus</option><option value="missing">Marcados faltantes</option></select></label><div id="pokeidle-channels"></div></div></details>
-      </section>
-      <div class="bulk-actions" aria-label="Controle de todos os canais"><button id="start-all">Iniciar todos</button><button id="stop-all" class="secondary">Fechar todos</button></div>
-      <p id="summary" role="status" class="hint"></p>
-      <p id="queue-summary" class="hint"></p>
-      <div class="section-title"><h2>Seus canais</h2><button id="refresh" class="secondary">Atualizar</button></div>
-      <div id="channels"></div>
-    </section>
+    <details id="android-note" class="mobile-note" hidden><summary>Uso em segundo plano no Android</summary><p>Mudar de app, bloquear a tela ou economizar bateria pode pausar as lives. A extensão não impede a suspensão do navegador.</p></details>
+    <div class="workspace">
+      <div class="main-column">
+        <section id="sessions-panel" class="panel sessions-panel" aria-labelledby="sessions-heading">
+          <div class="panel-heading"><div><span class="eyebrow">SEU ESPAÇO DE LIVES</span><h2 id="sessions-heading">Seus canais</h2><p id="summary" role="status" class="hint">Adicione seu primeiro canal.</p></div><button id="refresh" class="icon-button secondary" title="Atualizar sessões" type="button">Atualizar</button></div>
+          <div id="session-controls" hidden>
+            <div class="bulk-actions" aria-label="Controle de todos os canais"><button id="start-all" type="button">Iniciar todos</button><button id="stop-all" class="secondary" type="button">Fechar todos</button></div>
+            <div class="automation-bar"><p id="automation-state" role="status" class="hint"></p><button id="toggle-automation" class="text-button" type="button">Pausar agenda</button></div>
+            <p id="queue-summary" class="notice compact" hidden></p>
+          </div>
+          <form id="add-form" class="channel-form">
+            <label>Plataforma<select id="platform"><option value="kick">Kick</option><option value="twitch">Twitch</option></select></label>
+            <label class="grow">Canal ou link<input id="channel" placeholder="Nome do canal ou link" required maxlength="200" autocomplete="off"></label>
+            <button type="submit">Adicionar</button>
+          </form>
+          <div id="channels" role="region" aria-label="Lista de canais" tabindex="0"></div>
+          <details id="kick-options" class="inline-options" hidden><summary>Reprodução na Kick</summary><div class="panel-body"><label class="check-option"><input id="kick-live" type="checkbox" checked><span>Reproduzir live na menor qualidade disponível</span></label><p class="hint">Alterar esta opção reinicia as sessões Kick abertas.</p></div></details>
+        </section>
+        <section id="overview" class="overview" aria-label="Resumo de recompensas" hidden><div id="xp-overview"><span class="eyebrow">XP REGISTRADO</span><strong id="xp-total">Sem comparação</strong><span class="hint">Variação dos saldos manuais</span></div><div id="bonus-overview"><span class="eyebrow">BÔNUS PRONTOS</span><strong id="bonus-total">0</strong><span class="hint">Conforme os requisitos cadastrados</span></div></section>
+        <div id="optional-panels">
+    <details id="alerts-panel" hidden><summary>Avisos <span id="alert-count" class="count">0</span></summary><div class="panel-body"><div id="alerts" aria-live="polite"></div></div></details>
 
-    <section class="overview" aria-label="Resumo de recompensas"><div><span class="eyebrow">XP REGISTRADO</span><strong id="xp-total">Sem comparação</strong><span class="hint">Variação dos saldos manuais</span></div><div><span class="eyebrow">BÔNUS PRONTOS</span><strong id="bonus-total">0</strong><span class="hint">Conforme os requisitos cadastrados</span></div></section>
-
-    <details id="alerts-panel"><summary>Avisos <span id="alert-count" class="count">0</span></summary><div class="panel-body"><div id="alerts" aria-live="polite"></div></div></details>
-
-    <details id="bonuses-panel"><summary>Checklist de bônus e resgates</summary><div class="panel-body">
+    <details id="bonuses-panel" hidden><summary>Checklist de bônus e resgates</summary><div class="panel-body">
       <p class="hint">Cadastre as regras e a fonte de cada bônus. Marcar como resgatado registra sua confirmação; não envia um resgate à plataforma.</p>
       <div id="bonuses"></div>
       <form id="bonus-form" class="stacked-form">
@@ -59,7 +52,7 @@
       </form>
     </div></details>
 
-    <details id="history-panel"><summary>Histórico de XP e pontos</summary><div class="panel-body">
+    <details id="history-panel" hidden><summary>Histórico de XP e pontos</summary><div class="panel-body">
       <p class="hint">Leia o saldo no serviço oficial e registre aqui. Os valores não são consultados automaticamente. Use o mesmo tipo de saldo e a mesma conta em cada comparação.</p>
       <form id="measurement-form" class="stacked-form">
         <label>Saldo de<select id="measurement-channel" required></select></label>
@@ -72,10 +65,9 @@
       <h3>Leituras registradas</h3><div id="measurements"></div>
     </div></details>
 
-    <details id="schedule-panel"><summary>Agenda das oportunidades</summary><div class="panel-body">
+    <details id="schedule-panel" hidden><summary>Agenda das oportunidades</summary><div class="panel-body">
       <p class="hint">Use horários confirmados nas regras do bônus. O navegador precisa estar em execução; a agenda não confirma que um canal está ao vivo.</p>
       <p id="schedule-timezone" class="hint"></p>
-      <div class="automation-bar"><p id="automation-state" role="status" class="hint"></p><button id="toggle-automation" class="secondary" type="button">Pausar agenda</button></div>
       <div id="schedules"></div>
       <form id="schedule-form" class="stacked-form">
         <fieldset><legend>Canais da oportunidade</legend><div id="schedule-channels" class="channel-checks"></div></fieldset>
@@ -84,10 +76,29 @@
       </form>
     </div></details>
 
+        </div>
+      </div>
+      <div class="side-column">
+        <section id="pokeidle-panel" class="panel pokeidle-panel" aria-labelledby="pokeidle-heading">
+          <div class="panel-heading"><div><span class="eyebrow">INTEGRAÇÃO TWITCH</span><h2 id="pokeidle-heading">PokeIdle</h2></div><span id="pokeidle-connection" class="tag">Não conectado</span></div>
+          <div id="pokeidle-setup"><h3>Conecte sua lista de canais</h3><p>Abra o jogo e carregue a lista de canais oficiais para configurar as lives automáticas.</p></div>
+          <button id="open-pokeidle" class="secondary connect-button" type="button">Abrir PokeIdle <span aria-hidden="true">↗</span></button>
+          <div id="pokeidle-configured" hidden>
+            <label class="check-option"><input id="pokeidle-enabled" type="checkbox" checked><span>Automatizar Twitch do PokeIdle</span></label>
+            <div class="pokeidle-metrics" aria-label="Última lista do PokeIdle"><div><strong id="pokeidle-official-count">0</strong><span>Oficiais</span></div><div><strong id="pokeidle-live-bonus-count">0</strong><span>Ao vivo com bônus</span></div><div><strong id="pokeidle-missing-count">0</strong><span>Faltantes</span></div></div>
+            <p id="pokeidle-sessions" class="hint"></p>
+            <p id="pokeidle-waiting" class="notice compact" hidden></p>
+            <p id="pokeidle-error" class="hint" hidden></p>
+            <button id="refresh-pokeidle" class="secondary" type="button">Sincronizar agora</button>
+            <details class="source-details"><summary>Regras e origem</summary><div class="panel-body"><p id="pokeidle-status" role="status" class="hint"></p><div class="pokeidle-rule"><span class="eyebrow">REGRA EXIBIDA PELO JOGO</span><p id="pokeidle-rule-text">Ainda sem regra recebida.</p><p class="hint">Os sinais da página não confirmam XP creditado. Confira o saldo no jogo.</p></div></div></details>
+            <details id="pokeidle-list-panel"><summary>Ver canais da origem</summary><div class="panel-body"><label>Mostrar<select id="pokeidle-filter"><option value="all">Todos os canais</option><option value="eligible">Ao vivo, com bônus e faltantes</option><option value="live-bonus">Ao vivo com bônus</option><option value="missing">Marcados faltantes</option></select></label><div id="pokeidle-channels"></div></div></details>
+          </div>
+        </section>
+        <details id="personalization-panel"><summary>Personalizar painel</summary><div class="panel-body"><p class="hint">Ative as ferramentas que você quer configurar.</p><label class="feature-option"><input id="show-bonuses" type="checkbox"><span><strong>Bônus e resgates</strong><span>Cadastre requisitos e acompanhe resgates.</span></span></label><label class="feature-option"><input id="show-history" type="checkbox"><span><strong>Histórico de XP e pontos</strong><span>Registre saldos para comparar ganhos.</span></span></label><label class="feature-option"><input id="show-schedule" type="checkbox"><span><strong>Agenda de sessões</strong><span>Escolha os canais e horários para iniciar.</span></span></label><p class="hint">Ocultar um painel conserva seus dados e agendas ativas.</p></div></details>
     <details id="settings-panel"><summary>Limites de consumo e recuperação</summary><div class="panel-body">
       <p class="hint">A fila respeita os limites e a prioridade de cada canal. Salvar limites também ajusta as sessões abertas; os canais excedentes voltam para a fila. O uso de CPU e memória depende das páginas e não é medido pela extensão.</p>
       <form id="settings-form" class="stacked-form">
-        <div class="form-grid"><label>Máximo de abas gerenciadas<input id="max-concurrent" type="number" min="1" max="12" step="1" value="3" required></label><label>Máximo de vídeos Kick<input id="max-kick-lives" type="number" min="1" max="12" step="1" value="2" required></label></div>
+        <div class="form-grid"><label>Máximo de abas gerenciadas<input id="max-concurrent" type="number" min="1" max="12" step="1" value="3" required></label><label id="kick-limit-option" hidden>Máximo de vídeos Kick<input id="max-kick-lives" type="number" min="1" max="12" step="1" value="2" required></label></div>
         <label>Encerrar sessão após (min; 0 = sem prazo)<input id="session-minutes" type="number" min="0" max="1440" step="1" value="0" required></label>
         <label class="check-option"><input id="notifications-enabled" type="checkbox" checked><span>Notificações de lembretes, quando o navegador permitir</span></label>
         <label class="check-option"><input id="auto-reconnect" type="checkbox"><span>Tentar recuperar sessões com falha, respeitando pausas e limites</span></label>
@@ -95,10 +106,13 @@
       </form>
     </div></details>
 
-    <aside><strong>Reprodução ≠ XP confirmado</strong><p>Confira login, regras e saldos nas plataformas. A lista de bônus e o histórico são registros seus; o tempo de aba aberta não comprova recompensa recebida.</p></aside>
-    <a href="https://pokeidle.io/app" target="_blank" rel="noopener noreferrer">Abrir PokeIdle ↗</a>
+        <p class="privacy-note">Dados salvos neste navegador.<br>Sem servidor próprio.</p>
+      </div>
+    </div>
+    <p class="reward-note">Confira login e regras nas plataformas. Reprodução e tempo de aba aberta não comprovam XP recebido.</p>
   </main>
-  <footer>Dados salvos neste navegador · Sem servidor próprio</footer>
+  <footer><span class="footer-mark">Chat Leve</span><span>Seu ritmo. Seus canais.</span></footer>
+</div>
   <script type="module" src="popup.js"></script>
 </body>
 </html>

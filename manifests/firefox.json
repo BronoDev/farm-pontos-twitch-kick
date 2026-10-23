@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Chat Leve — Twitch e Kick",
   "description": "Organize bônus PokeIdle, lives Twitch/Kick e consumo em segundo plano.",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "permissions": [
     "storage",
     "tabs",
@@ -14,6 +14,7 @@
       "rewards.js",
       "pokeidle-state.js",
       "automation.js",
+      "ui-state-background.js",
       "core.js",
       "background.js"
     ]

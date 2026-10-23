@@ -88,7 +88,7 @@ BOOTSTRAP = r'''
 
 
 def idle(page):
-    page.wait_for_function("!document.querySelector('#start-all').disabled")
+    page.wait_for_function("!document.querySelector('#channel').disabled")
 
 
 def refresh(page):
@@ -142,16 +142,21 @@ def run_width(browser, server, width):
     page.wait_for_function("document.querySelector('#pokeidle-official-count').textContent === '16'")
     assert page.locator('#pokeidle-live-bonus-count').inner_text() == '8'
     assert page.locator('#pokeidle-missing-count').inner_text() == '8'
+    open_panel(page, '#pokeidle-configured .source-details')
     assert page.locator('#pokeidle-rule-text').inner_text() == snapshot['ruleText']
+    page.locator('#pokeidle-configured .source-details > summary').tap()
     assert len(auto_sessions(page)) == 3
     assert page.evaluate('__state().settings.maxConcurrent') == 3
     assert page.evaluate('__state().queue.length') == 5
     assert '5 canais aguardam' in page.locator('#pokeidle-waiting').inner_text()
     assert 'Limite atual: 3' in page.locator('#pokeidle-waiting').inner_text()
-    assert page.locator('#xp-total').inner_text() == 'Sem comparação'
+    assert page.locator('#overview').is_hidden(), 'métricas extras não devem ocupar o painel antes da configuração'
     assert all(session['media'] == 'live' for session in auto_sessions(page))
     assert page.evaluate("Object.entries(__state().sessions).every(([id,session])=>{const tab=__tabs().find(t=>t.id===session.tabId);return tab.muted===true && tab.active===false && tab.url==='https://www.twitch.tv/'+id.slice(7)})")
-    assert 'Twitch com vídeo' in page.locator('#channels').inner_text()
+    first_options = page.locator('#channels .row details.channel-options').first
+    first_options.locator(':scope > summary').tap()
+    assert 'Twitch com vídeo' in first_options.inner_text()
+    first_options.locator(':scope > summary').tap()
 
     before = page.evaluate('__created().length')
     original = auto_sessions(page)
@@ -187,8 +192,8 @@ def run_width(browser, server, width):
     assert page.evaluate('__state().queue.length') == 0
     assert page.evaluate('Object.keys(__state().sessions).length') == 0
     assert 'Automação pausada' in page.locator('#pokeidle-waiting').inner_text()
-    open_panel(page, '#schedule-panel')
-    page.get_by_role('button', name='Retomar agenda', exact=True).tap()
+    assert page.locator('#schedule-panel').is_hidden()
+    page.locator('#toggle-automation').tap()
     idle(page)
     assert len(auto_sessions(page)) == 3
     assert page.evaluate('__state().queue.length') == 5
@@ -202,6 +207,7 @@ def run_width(browser, server, width):
     shared_tab = page.evaluate('id=>__state().sessions[id].tabId', shared['id'])
     add_channel(page, 'kick', 'yetz')
     kick_row = page.locator('#channels .row').filter(has_text='yetz')
+    kick_row.locator('details.channel-options > summary').tap()
     kick_row.locator('select').select_option('2')
     page.wait_for_function("__state().channels.find(channel=>channel.id==='kick:yetz').priority===2")
     idle(page)

@@ -82,13 +82,20 @@ BOOTSTRAP = r'''
 
 
 def idle(page):
-    page.wait_for_function("!document.querySelector('#start-all').disabled")
+    page.wait_for_function("!document.querySelector('#channel').disabled")
 
 
 def open_panel(page, name):
     panel = page.locator(name)
     if not panel.evaluate('node => node.open'):
         panel.locator(':scope > summary').tap()
+
+
+def enable_panel(page, name):
+    open_panel(page, '#personalization-panel')
+    page.locator(f'#show-{name}').check()
+    page.wait_for_function("name => __state().uiPreferences.panels[name] === true", arg=name)
+    idle(page)
 
 
 def refresh(page):
@@ -105,6 +112,7 @@ def fill_time(page, selector, timestamp):
 
 
 def record(page, xp=None, points=None, at=None):
+    enable_panel(page, 'history')
     open_panel(page, '#history-panel')
     page.locator('#measurement-channel').select_option('kick:yetz')
     page.locator('#measurement-xp').fill('' if xp is None else str(xp))
@@ -117,6 +125,7 @@ def record(page, xp=None, points=None, at=None):
 
 
 def add_schedule(page, channel_id, start, end):
+    enable_panel(page, 'schedule')
     open_panel(page, '#schedule-panel')
     for checkbox in page.locator('#schedule-channels input').all():
         checkbox.set_checked(checkbox.input_value() == channel_id)
@@ -165,6 +174,7 @@ def run():
             assert page.evaluate("__state().sessions['kick:yetz'].media") == 'live'
             assert page.evaluate('__tabs().every(tab => tab.active === false && tab.muted === true)')
 
+            enable_panel(page, 'bonuses')
             open_panel(page, '#bonuses-panel')
             page.locator('#bonus-channel').select_option('kick:yetz')
             page.locator('#bonus-title').fill('Bônus XP de teste')
@@ -225,7 +235,7 @@ def run():
             now = page.evaluate('Date.now()')
             scheduled = add_schedule(page, 'twitch:outro', now + 120000, now + 300000)
             assert scheduled['startedAt'] is None
-            page.get_by_role('button', name='Retomar agenda', exact=True).tap()
+            page.locator('#toggle-automation').tap()
             idle(page)
             page.evaluate('at=>__setClock(at)', scheduled['startsAt'] + 1000)
             page.evaluate("__dispatch({type:'tick'})")

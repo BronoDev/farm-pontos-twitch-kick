@@ -79,3 +79,13 @@ Quando a marca de faltante desaparecer, a live já aberta continua. O aplicativo
 O texto original do bônus (incluindo `+15%` e `+2,5%`) é mostrado sem converter esses números em XP recebido. O saldo continua precisando de conferência no serviço. Saiba mais em [docs/POKEIDLE.md](docs/POKEIDLE.md).
 
 A versão 0.7 precisa de **uma nova assinatura Firefox**. As chaves AMO continuavam ausentes na última conferência do ambiente, e nenhum XPI desta versão foi assinado aqui. O pacote assinado antigo não cobre esses arquivos novos; use o [fluxo de assinatura](docs/ASSINATURA-MOZILLA.md).
+
+## Versão 0.8: painel adaptado ao computador
+
+Atualize na mesma pasta e recarregue a extensão. O painel pode ser aberto em uma aba para usar o espaço da tela do PC; a visualização compacta continua disponível no menu da extensão.
+
+Comece adicionando seus canais ou conectando o PokeIdle. As opções Kick aparecem ao cadastrar um canal Kick. A integração PokeIdle mostra os detalhes depois de receber uma leitura da lista do jogo.
+
+Em **Personalizar painel**, habilite o checklist de bônus, o histórico manual e a agenda conforme precisar. Se você já tinha dados de uma versão anterior, a seção correspondente continua disponível. As preferências ficam salvas neste navegador. Ocultar um painel não apaga registros nem encerra uma agenda; use os controles da agenda ou **Fechar todos** para pausar a automação.
+
+Para ver prioridade ou diagnóstico, abra os detalhes do canal. Mais informações em [docs/INTERFACE.md](docs/INTERFACE.md). Esta versão também requer assinatura Mozilla nova para instalação Firefox permanente; os ZIPs continuam sendo pacotes de desenvolvimento.

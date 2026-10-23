@@ -97,3 +97,14 @@ A leitura de `.tw-canais` vem da interface PokeIdle aberta no navegador. Os sina
 A página Twitch retornou HTML200 numa consulta com TLS verificado; seus assets foram bloqueados pelo proxy. O Chromium apresentou erro de confiança TLS ao acessar o site real, sem contorno dessa verificação. Reprodução, login, qualidade real, consumo e XP no servidor continuam sem validação. Android e Opera GX nativos também não foram testados.
 
 A versão 0.7 altera arquivos e permissões e precisa de assinatura Firefox nova para instalação permanente. A assinatura anterior não cobre esta versão. Consulte [POKEIDLE.md](POKEIDLE.md) para atualizar permissões, manter a origem aberta e ajustar o limite de sessões.
+
+## Versão 0.8: painel responsivo e opções configuradas
+
+- `npm run package` e `npm run check` passaram para as quatro distribuições 0.8.0 e seus ZIPs. O gerador mantém `ui-state.js` como módulo para o painel e cria `ui-state-background.js` clássico para o background Firefox, carregado antes de `core.js`.
+- **99 testes Node passaram**, sem falhas ou skips. Os novos testes cobrem normalização das escolhas de apresentação, migração de instalações com dados existentes, persistência após recriar o controlador, rejeição de preferências inválidas e abertura da página própria da extensão. Ocultar um painel preserva bônus, leituras, agenda, sessões e estado da automação.
+- `python3 scripts/test-desktop-ui.py` passou em 600×600, 1280×800, 1440×900, 320×740 e 360×740. Exercitou configuração inicial, apresentação condicional, preferências após recarregar, formulários abertos e lista com 18 canais. Também verificou a migração de dados existentes. A lista usa rolagem local no desktop para manter os controles acessíveis. Sem sobreposições ou rolagem horizontal nos cenários testados.
+- O mesmo script carregou os painéis distribuídos em `instalar/firefox` e `instalar/firefox-android`, confirmou o import do módulo de apresentação e ativou o histórico pela interface, com DOM/controlador reais e APIs simuladas.
+- `test-mobile-ui.py` passou em 320/360/412/560px; `test-pokeidle-reader.py`, `test-dashboard.py` e `test-pokeidle-dashboard.py` também passaram com os fluxos adaptados à configuração dos painéis. O painel PokeIdle foi exercitado em 320 e 360px.
+- `web-ext` 10.8.0 validou Firefox desktop e Android com zero erros, avisos ou observações. O aviso da ferramenta sobre não conseguir gravar sua configuração de atualização não afetou o resultado da validação.
+
+As verificações de interface usam Chromium e APIs de navegador simuladas, com o controlador real. Não equivalem à execução nativa em Firefox/Opera GX ou em Android, nem validam player real, pontos ou consumo. A versão alterada também precisa de assinatura Mozilla nova para instalação Firefox permanente. Consulte [INTERFACE.md](INTERFACE.md) para escolher os recursos visíveis sem apagar dados ou desativar uma agenda por engano.

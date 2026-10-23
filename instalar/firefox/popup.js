@@ -1,3 +1,5 @@
+import { uiPanelVisible } from './ui-state.js';
+
 const $ = selector => document.querySelector(selector);
 const api = globalThis.browser ?? globalThis.chrome;
 const errorBox = $('#error');
@@ -5,6 +7,7 @@ $('#android-note').hidden = !/Android/i.test(navigator.userAgent);
 let busy = false;
 let lastState;
 let editingBonus = null;
+const openChannelOptions = new Set();
 const numberFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
 const formatNumber = value => Number.isFinite(value) ? numberFormat.format(value) : 'não informado';
 const formatTime = value => Number.isFinite(value) ? new Date(value).toLocaleString('pt-BR') : 'sem data';
@@ -72,13 +75,19 @@ function fillChannelFields(state) {
 function renderChannels(state) {
   const list = $('#channels');
   list.replaceChildren();
-  if (!state.channels.length) empty(list, 'Adicione um canal para iniciar em segundo plano.');
+  if (!state.channels.length) {
+    const welcome = element('div', '', 'welcome');
+    const symbol = element('span', '▷', 'welcome-symbol');
+    symbol.setAttribute('aria-hidden', 'true');
+    welcome.append(symbol, element('h3', 'Pronto para começar?'), element('p', 'Adicione um canal acima ou conecte o PokeIdle. Seus controles aparecem aqui.'));
+    list.append(welcome);
+  }
   for (const item of state.channels) {
     const session = state.sessions[item.id];
     const row = element('div', '', 'row');
     const info = element('div', '', 'info');
     const name = element('div', '', 'name');
-    name.append(element('span', item.platform, 'badge'), document.createTextNode(item.name));
+    name.append(element('span', item.platform, `badge ${item.platform}`), document.createTextNode(item.name));
     const parts = [];
     if (!session) parts.push(state.queue.includes(item.id) ? `Na fila · posição ${state.queue.indexOf(item.id) + 1}` : 'Sessão fechada');
     else {
@@ -104,13 +113,20 @@ function renderChannels(state) {
         if (health.checkedAt) parts.push(`diagnóstico às ${new Date(health.checkedAt).toLocaleTimeString('pt-BR')}`);
       } else parts.push('conexão e login não verificados');
     }
-    info.append(name, element('div', parts.join(' · '), 'status'));
+    let shortStatus = session ? session.media === 'live' ? 'Live em segundo plano' : 'Chat em segundo plano' : state.queue.includes(item.id) ? `Na fila · posição ${state.queue.indexOf(item.id) + 1}` : 'Pronto para iniciar';
+    if (session?.playback?.qualityStatus === 'autoplay-blocked') shortStatus = 'Abra a aba para iniciar o vídeo';
+    else if (session?.playback?.error) shortStatus = 'Confira o player na aba';
+    else if (session?.health?.login === 'signed-out') shortStatus = 'Faça login na plataforma';
+    info.append(name, element('div', shortStatus, 'status'));
     row.append(info);
     const controls = element('div', '', 'actions');
     controls.append(action(session || state.queue.includes(item.id) ? 'Fechar' : 'Iniciar', { type: session || state.queue.includes(item.id) ? 'stop' : 'start', id: item.id }));
     if (session) controls.append(action('Ver aba', { type: 'openSession', id: item.id }));
-    controls.append(action('Remover', { type: 'remove', id: item.id }, 'danger'));
     row.append(controls);
+    const options = element('details', '', 'channel-options');
+    options.open = openChannelOptions.has(item.id);
+    options.append(element('summary', 'Opções do canal'));
+    const optionBody = element('div', '', 'panel-body');
     const label = element('label', 'Prioridade na fila', 'priority-label');
     const priority = document.createElement('select');
     priority.setAttribute('aria-label', `Prioridade de ${item.name}`);
@@ -118,7 +134,13 @@ function renderChannels(state) {
     priority.value = String(item.priority || 0);
     priority.addEventListener('change', () => command({ type: 'setPriority', id: item.id, priority: Number(priority.value) }));
     label.append(priority);
-    row.append(label);
+    optionBody.append(label, element('p', parts.join(' · '), 'hint'));
+    const remove = element('div', '', 'actions');
+    remove.append(action('Remover', { type: 'remove', id: item.id }, 'danger'));
+    optionBody.append(remove);
+    options.append(optionBody);
+    options.addEventListener('toggle', () => options.open ? openChannelOptions.add(item.id) : openChannelOptions.delete(item.id));
+    row.append(options);
     list.append(row);
   }
 }
@@ -147,6 +169,11 @@ function renderPokeIdle(state) {
   const queued = state.queue.filter(id => state.queueSources?.[id]?.includes(POKEIDLE_OWNER));
   const observed = Number.isFinite(source.observedAt) && source.observedAt > 0;
   const stale = observed && Date.now() - source.observedAt > 180000;
+  $('#pokeidle-setup').hidden = observed;
+  $('#pokeidle-configured').hidden = !observed;
+  const connected = observed && source.connected === true && !stale;
+  $('#pokeidle-connection').textContent = connected ? 'Conectado' : observed ? 'Aguardando leitura' : 'Não conectado';
+  $('#pokeidle-connection').classList.toggle('connected', connected);
   $('#pokeidle-enabled').checked = source.enabled !== false;
   $('#pokeidle-official-count').textContent = String(channels.length);
   $('#pokeidle-live-bonus-count').textContent = String(channels.filter(item => item.live && item.bonus).length);
@@ -237,6 +264,9 @@ function renderHistory(state) {
 function renderSchedules(state) {
   const list = $('#schedules');
   list.replaceChildren();
+  $('#automation-state').textContent = state.automationPaused ? 'Agenda e automação pausadas.' : 'Automação habilitada.';
+  $('#toggle-automation').textContent = state.automationPaused ? 'Retomar agenda' : 'Pausar agenda';
+  if (!uiPanelVisible(state, 'schedule')) return;
   if (!state.schedules.length) empty(list, 'Sem horários cadastrados. A agenda inicia apenas as oportunidades que você configurar.');
   for (const schedule of state.schedules) {
     const phase = schedule.endedAt ? 'Encerrada' : !schedule.enabled ? 'Desativada' : schedule.startedAt ? 'Iniciada' : 'Agendada';
@@ -248,14 +278,13 @@ function renderSchedules(state) {
     node.append(controls);
     list.append(node);
   }
-  $('#automation-state').textContent = state.automationPaused ? 'Agenda e automação pausadas.' : 'Agenda e automação habilitadas conforme suas configurações.';
-  $('#toggle-automation').textContent = state.automationPaused ? 'Retomar agenda' : 'Pausar agenda';
 }
 function renderAlerts(state) {
   const list = $('#alerts');
   list.replaceChildren();
   const alerts = state.alerts.filter(alert => !alert.read);
   $('#alert-count').textContent = String(alerts.length);
+  $('#alerts-panel').hidden = alerts.length === 0;
   if (!alerts.length) empty(list, 'Nenhum aviso pendente.');
   for (const alert of alerts) {
     const node = element('article', '', 'notice');
@@ -268,6 +297,25 @@ function renderAlerts(state) {
     list.append(node);
   }
 }
+function renderVisibility(state) {
+  const hasKick = state.channels.some(item => item.platform === 'kick');
+  $('#session-controls').hidden = state.channels.length === 0;
+  $('#kick-options').hidden = !hasKick;
+  $('#kick-limit-option').hidden = !hasKick;
+  for (const panel of ['bonuses', 'history', 'schedule']) {
+    const visible = uiPanelVisible(state, panel);
+    $(`#${panel}-panel`).hidden = !visible;
+    $(`#show-${panel}`).checked = visible;
+  }
+  const history = uiPanelVisible(state, 'history');
+  const bonuses = uiPanelVisible(state, 'bonuses');
+  $('#overview').hidden = !history && !bonuses;
+  $('#xp-overview').hidden = !history;
+  $('#bonus-overview').hidden = !bonuses;
+  $('#bonus-form').hidden = state.channels.length === 0;
+  $('#schedule-form').hidden = state.channels.length === 0;
+  $('#optional-panels').hidden = !bonuses && !history && !uiPanelVisible(state, 'schedule') && !state.alerts.some(alert => !alert.read);
+}
 function render(state) {
   lastState = { channels: [], sessions: {}, bonuses: [], measurements: [], schedules: [], settings: {}, queue: [], alerts: [], ...state };
   lastState.summary ||= {};
@@ -275,15 +323,19 @@ function render(state) {
   $('#kick-live').checked = state.kickLive;
   $('#summary').textContent = `${Object.keys(state.sessions).length} de ${state.channels.length} canais abertos`;
   $('#queue-summary').textContent = state.queue.length ? `${state.queue.length} na fila: ${state.queue.map(channelLabel).join(', ')}` : 'Sem canais na fila.';
+  $('#queue-summary').hidden = state.queue.length === 0;
   $('#xp-total').textContent = Number.isFinite(state.summary.totals?.xpDelta) ? `${formatNumber(state.summary.totals.xpDelta)} XP` : 'Sem comparação';
   $('#bonus-total').textContent = String((state.summary.bonusItems || []).filter(bonus => bonus.status === 'ready').length);
   renderChannels(state);
   renderPokeIdle(state);
   fillChannelFields(state);
-  renderBonuses(state);
-  renderHistory(state);
+  if (uiPanelVisible(state, 'bonuses')) renderBonuses(state);
+  else $('#bonuses').replaceChildren();
+  if (uiPanelVisible(state, 'history')) renderHistory(state);
+  else { $('#measurements').replaceChildren(); $('#earnings').replaceChildren(); }
   renderSchedules(state);
   renderAlerts(state);
+  renderVisibility(state);
   const settings = { maxConcurrent: 3, maxKickLives: 2, sessionMinutes: 0, notifications: true, autoReconnect: false, ...state.settings };
   $('#max-concurrent').value = settings.maxConcurrent;
   $('#max-kick-lives').value = settings.maxKickLives;
@@ -386,6 +438,20 @@ form('#schedule-form', async () => {
 });
 form('#settings-form', () => command({ type: 'setSettings', settings: { maxConcurrent: numeric('#max-concurrent'), maxKickLives: numeric('#max-kick-lives'), sessionMinutes: numeric('#session-minutes'), notifications: $('#notifications-enabled').checked, autoReconnect: $('#auto-reconnect').checked } }));
 $('#refresh').addEventListener('click', () => command({ type: 'status' }));
+$('#open-dashboard').addEventListener('click', () => command({ type: 'openDashboard' }));
+for (const panel of ['bonuses', 'history', 'schedule']) {
+  $(`#show-${panel}`).addEventListener('change', async event => {
+    const visible = event.target.checked;
+    if (await command({ type: 'setUiPanel', panel, visible })) {
+      const target = $(`#${panel}-panel`);
+      target.open = visible;
+      if (visible) target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  });
+}
+$('#platform').addEventListener('change', event => {
+  $('#channel').placeholder = event.target.value === 'kick' ? 'yetz ou https://kick.com/yetz' : 'Canal ou https://www.twitch.tv/canal';
+});
 $('#open-pokeidle').addEventListener('click', () => command({ type: 'openPokeIdle' }));
 $('#refresh-pokeidle').addEventListener('click', () => command({ type: 'refreshPokeIdle' }));
 $('#pokeidle-enabled').addEventListener('change', event => command({ type: 'setPokeIdle', enabled: event.target.checked }));

@@ -52,9 +52,9 @@ function createController(api) {
     return androidGecko;
   }
   async function read() {
-    const raw = await api.storage.local.get(['channels', 'sessions', 'kickLive', 'bonuses', 'measurements', 'schedules', 'settings', 'queue', 'queueSources', 'alerts', 'activeReminderIds', 'sessionHistory', 'automationPaused', 'pausedChannels', 'pokeidle']);
+    const raw = await api.storage.local.get(['channels', 'sessions', 'kickLive', 'bonuses', 'measurements', 'schedules', 'settings', 'queue', 'queueSources', 'alerts', 'activeReminderIds', 'sessionHistory', 'automationPaused', 'pausedChannels', 'pokeidle', 'uiPreferences']);
     const channels = Array.isArray(raw.channels) ? raw.channels : [];
-    return { channels, sessions: raw.sessions || {}, kickLive: raw.kickLive !== false, pokeidle: normalizePokeIdle(raw.pokeidle), ...normalizeRewardsState(raw), ...operationalState(raw, channels) };
+    return { channels, sessions: raw.sessions || {}, kickLive: raw.kickLive !== false, pokeidle: normalizePokeIdle(raw.pokeidle), uiPreferences: normalizeUiPreferences(raw.uiPreferences), ...normalizeRewardsState(raw), ...operationalState(raw, channels) };
   }
   async function alive(session, item) {
     if (!session) return false;
@@ -226,6 +226,11 @@ function createController(api) {
     } else if (message.type === 'stopAll') {
       state.queue = []; state.queueSources = {}; state.automationPaused = true;
       for (const item of state.channels) await apply(item, stop);
+    } else if (message.type === 'setUiPanel') {
+      if (!['bonuses', 'history', 'schedule'].includes(message.panel) || typeof message.visible !== 'boolean') throw new Error('Opção de painel inválida.');
+      state.uiPreferences.panels[message.panel] = message.visible;
+    } else if (message.type === 'openDashboard') {
+      await api.tabs.create({ url: api.runtime.getURL('popup.html'), active: true });
     } else if (message.type === 'openPokeIdle') {
       let source;
       if (api.tabs.query) source = (await api.tabs.query({ url: 'https://pokeidle.io/*' })).find(tab => isPokeIdleUrl(tab.url));
