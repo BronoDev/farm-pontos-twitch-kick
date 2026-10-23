@@ -82,3 +82,18 @@ Não considere o pacote pronto para instalação comum no Android enquanto falta
 Regras dos bônus, confirmação de requisitos, leituras de saldo e registro de resgate são manuais. Não há integração verificada com uma API PokeIdle nem confirmação de XP obtido pelo serviço. A agenda usa horários cadastrados; não é descoberta automática do início de uma live. Os sinais de login/conexão são evidências da interface local, não verificação de autenticação no servidor.
 
 Alarmes rodam aproximadamente a cada minuto com o navegador disponível; encerramento/suspensão do sistema, principalmente no Android, podem atrasá-los. O código não é um serviço Android e não mantém o aparelho acordado. Não foram testados reprodução/login reais, pontos ou assinatura/instalação nativa na versão nova. As variáveis e os domínios necessários foram salvos em rascunho do ambiente para configuração segura; salvar rascunho não assina nem publica uma extensão.
+
+## Versão 0.7: leitura do PokeIdle e lives Twitch
+
+- `npm run package` e `npm run check` passaram para as quatro distribuições 0.7.0 e seus ZIPs. Incluem os novos scripts, a permissão de acesso ao PokeIdle e os scripts de player também na Twitch. A ordem dos scripts clássicos Firefox foi exercitada pelos testes do pacote.
+- **93 testes Node passaram**, sem falhas ou skips. A integração usa a fixture do HTML fornecido: 16 canais, oito elegíveis, três sessões e cinco na fila por padrão. Cobre sincronização sem duplicação, vídeo Twitch, menor qualidade por radios/labels, limite Kick separado, propriedade manual/automática, pausa individual/global, fonte vencida/fechada, exclusões, migração e limite de duração. Flags ausentes/inválidas não viram offline. Atualizar a origem aguarda sua resposta fora da fila do controlador, com teste contra bloqueio mútuo.
+- `python3 scripts/test-pokeidle-reader.py` passou no Chromium: fixture real, SPA, classes públicas, debounce/throttle, heartbeat, atualização autenticada após aceite e limpeza ao sair da página.
+- `python3 scripts/test-pokeidle-dashboard.py` passou em 320 e 360px com parser, painel e controlador reais, usando APIs de navegador simuladas. Verificou a lista 16/8/8, fila e limite, abas silenciosas, sincronização idempotente, manutenção quando a marca faltante desaparece, avanço após offline, pausa/retomada e preservação de sessões manuais ao desativar. Sem erros JavaScript ou rolagem horizontal.
+- As verificações `test-dashboard.py`, `test-mobile-ui.py` (320/360/412/560px), `test-player.py` e `test-health.py` também passaram. O player usa fixtures DOM Kick/Twitch; a menor resolução selecionada nessas fixtures não comprova funcionamento no site real.
+- `web-ext` 10.8.0 validou Firefox desktop e Android com zero erros, avisos ou observações. `npm run mozilla:check` conferiu o plano 0.7.0 e relatou ambas as chaves AMO ausentes; não houve envio ou assinatura.
+
+A leitura de `.tw-canais` vem da interface PokeIdle aberta no navegador. Os sinais ao vivo/com bônus/faltante e a regra literal (`+15%`/`+2,5%`) não validam XP creditado. A lista colada serve como fixture, sem congelar seus canais ou status no produto.
+
+A página Twitch retornou HTML200 numa consulta com TLS verificado; seus assets foram bloqueados pelo proxy. O Chromium apresentou erro de confiança TLS ao acessar o site real, sem contorno dessa verificação. Reprodução, login, qualidade real, consumo e XP no servidor continuam sem validação. Android e Opera GX nativos também não foram testados.
+
+A versão 0.7 altera arquivos e permissões e precisa de assinatura Firefox nova para instalação permanente. A assinatura anterior não cobre esta versão. Consulte [POKEIDLE.md](POKEIDLE.md) para atualizar permissões, manter a origem aberta e ajustar o limite de sessões.

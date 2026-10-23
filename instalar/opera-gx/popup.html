@@ -18,7 +18,20 @@
         <button type="submit">Adicionar</button>
       </form>
       <label class="check-option"><input id="kick-live" type="checkbox" checked><span>Kick: reproduzir live e tentar a menor qualidade disponível</span></label>
-      <p class="hint">Alterar essa opção reinicia as sessões Kick abertas. Twitch continua apenas no chat.</p>
+      <p class="hint">Alterar essa opção reinicia as sessões Kick abertas. Twitch manual usa chat; canais automáticos do PokeIdle usam a live.</p>
+      <section id="pokeidle-panel" class="pokeidle-panel" aria-labelledby="pokeidle-heading">
+        <div class="section-title"><h2 id="pokeidle-heading">Twitch do PokeIdle</h2><button id="open-pokeidle" class="secondary" type="button">Abrir PokeIdle</button></div>
+        <label class="check-option"><input id="pokeidle-enabled" type="checkbox" checked><span>Automatizar Twitch do PokeIdle</span></label>
+        <p class="hint">Mantenha o PokeIdle aberto. Canais que ele indicar ao vivo, com bônus e faltantes entram na fila para reproduzir a live.</p>
+        <p id="pokeidle-status" role="status" class="hint"></p>
+        <p id="pokeidle-error" class="hint" hidden></p>
+        <div class="pokeidle-metrics" aria-label="Última lista do PokeIdle"><div><strong id="pokeidle-official-count">0</strong><span>Canais oficiais</span></div><div><strong id="pokeidle-live-bonus-count">0</strong><span>Ao vivo com bônus</span></div><div><strong id="pokeidle-missing-count">0</strong><span>Marcados faltantes</span></div></div>
+        <p id="pokeidle-sessions" class="hint"></p>
+        <p id="pokeidle-waiting" class="hint mobile-note" hidden></p>
+        <div class="pokeidle-rule"><span class="eyebrow">REGRA EXIBIDA PELO POKEIDLE</span><p id="pokeidle-rule-text">Ainda sem regra recebida.</p><p class="hint">A regra e os sinais da página não confirmam XP creditado. Confira o saldo no serviço oficial.</p></div>
+        <div class="actions"><button id="refresh-pokeidle" class="secondary" type="button">Sincronizar agora</button></div>
+        <details id="pokeidle-list-panel"><summary>Ver canais da origem</summary><div class="panel-body"><label>Mostrar<select id="pokeidle-filter"><option value="all">Todos os canais</option><option value="eligible">Ao vivo, com bônus e faltantes</option><option value="live-bonus">Ao vivo com bônus</option><option value="missing">Marcados faltantes</option></select></label><div id="pokeidle-channels"></div></div></details>
+      </section>
       <div class="bulk-actions" aria-label="Controle de todos os canais"><button id="start-all">Iniciar todos</button><button id="stop-all" class="secondary">Fechar todos</button></div>
       <p id="summary" role="status" class="hint"></p>
       <p id="queue-summary" class="hint"></p>

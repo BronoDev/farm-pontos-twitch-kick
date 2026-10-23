@@ -1,6 +1,6 @@
 {
   "name": "chat-leve",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "Gerenciador local de chats em segundo plano da Twitch e Kick",
@@ -11,7 +11,7 @@
     "build": "node scripts/build.mjs",
     "package": "npm run build && python3 scripts/package.py",
     "test": "node --test",
-    "check": "node --check src/background.js && node --check src/popup.js && node --check src/core.js && node --check src/kick-player.js && node --check src/kick-quality.js && node --check src/rewards.js && node --check src/automation.js && node --check src/site-status.js && node --check scripts/mozilla-sign.mjs && node scripts/build.mjs --check && python3 scripts/package.py --check",
+    "check": "node --check src/background.js && node --check src/popup.js && node --check src/core.js && node --check src/kick-player.js && node --check src/kick-quality.js && node --check src/rewards.js && node --check src/pokeidle-state.js && node --check src/pokeidle.js && node --check src/automation.js && node --check src/site-status.js && node --check scripts/mozilla-sign.mjs && node scripts/build.mjs --check && python3 scripts/package.py --check",
     "android:run": "npx --yes web-ext@10.8.0 run --target=firefox-android --source-dir=instalar/firefox-android --firefox-apk=org.mozilla.fenix",
     "mozilla:check": "node scripts/mozilla-sign.mjs --check",
     "mozilla:sign": "node scripts/mozilla-sign.mjs"

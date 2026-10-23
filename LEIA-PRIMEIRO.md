@@ -44,7 +44,7 @@ Entre na Twitch/Kick **no próprio Opera GX**: o login de outro navegador não �
 
 Entre na Twitch/Kick no mesmo navegador. Abra **Chat Leve** pelo menu de extensões, adicione um canal (por exemplo `https://kick.com/yetz`) e clique em **Iniciar** ou **Iniciar todos**. Não é necessário instalar Node, Python ou executar comandos para usar.
 
-Na Kick, a opção de vídeo vem ativada: abre a live em uma aba silenciosa e tenta escolher a menor qualidade pelo player oficial. Na Twitch, abre somente o chat. Ambas ficam em segundo plano, sem novas janelas de pop-up. **Fechar todos** encerra as abas gerenciadas e conserva sua lista para abrir novamente. As abas continuam visíveis na barra do navegador; este modo não cria chats completamente invisíveis.
+Na Kick, a opção de vídeo vem ativada: abre a live em uma aba silenciosa e tenta escolher a menor qualidade pelo player oficial. Na Twitch manual, abre o chat; a automação PokeIdle usa a live com vídeo. Ambas ficam em segundo plano, sem novas janelas de pop-up. **Fechar todos** encerra as abas gerenciadas e conserva sua lista para abrir novamente. As abas continuam visíveis na barra do navegador; este modo não cria chats completamente invisíveis.
 
 Clique em **Atualizar** para ver a última amostra de reprodução/resolução da Kick. Se o vídeo não iniciar, abra sua aba e clique em reproduzir. Se não conseguir ajustar automaticamente a qualidade, selecione a menor opção no player. Confira pontos e XP nas plataformas. Detalhes em [README.md](README.md).
 
@@ -67,3 +67,15 @@ O painel agora inclui checklist de bônus, histórico **manual** de XP/pontos, a
 Ao atualizar, autorize as novas permissões de alarmes, notificações e acesso às páginas Twitch quando solicitado. **Fechar todos** também pausa a agenda; clique em **Retomar agenda** ou **Iniciar todos** para voltar à automação. Veja o [README](README.md) para usar os controles.
 
 Mesmo que você tenha um XPI assinado da versão anterior, os arquivos novos precisam de outra assinatura. O fluxo preparado usa sua conta AMO e as variáveis seguras `WEB_EXT_API_KEY` e `WEB_EXT_API_SECRET`. Leia [ASSINATURA-MOZILLA.md](docs/ASSINATURA-MOZILLA.md). Os ZIPs deste repositório continuam sendo pacotes de desenvolvimento; só um XPI efetivamente retornado e validado pelo Firefox é uma instalação assinada.
+
+## Versão 0.7: widget PokeIdle e lives Twitch automáticas
+
+Após atualizar e recarregar a extensão, autorize o acesso a `pokeidle.io` quando solicitado. Entre em `https://pokeidle.io/app` e mantenha a aba aberta com o widget de canais carregado. No painel, confira a importação dos canais e das regras exibidas pelo jogo e ative a automação PokeIdle.
+
+Uma nova live só entra na fila quando o widget a mostra ao vivo, com bônus e faltante para você. O limite global começa em três sessões simultâneas e pode ser alterado no painel, de 1 a 12; as demais aguardam na fila. Para oito canais elegíveis juntos, defina pelo menos oito vagas, sem outras sessões ocupando-as, considerando o maior consumo. Elas usam vídeo Twitch silencioso com tentativa de menor qualidade. A Twitch iniciada manualmente continua apenas no chat.
+
+Quando a marca de faltante desaparecer, a live já aberta continua. O aplicativo não interpreta isso como XP confirmado. Se o canal sair do ar ou perder o bônus, ele encerra somente a sessão exclusivamente automática. Abas com uso manual são preservadas ao desativar o modo. **Fechar todos** pausa a automação; a aba PokeIdle fechada ou sem amostra recente por três minutos impede novos inícios por essa origem.
+
+O texto original do bônus (incluindo `+15%` e `+2,5%`) é mostrado sem converter esses números em XP recebido. O saldo continua precisando de conferência no serviço. Saiba mais em [docs/POKEIDLE.md](docs/POKEIDLE.md).
+
+A versão 0.7 precisa de **uma nova assinatura Firefox**. As chaves AMO continuavam ausentes na última conferência do ambiente, e nenhum XPI desta versão foi assinado aqui. O pacote assinado antigo não cobre esses arquivos novos; use o [fluxo de assinatura](docs/ASSINATURA-MOZILLA.md).

@@ -4,8 +4,10 @@ import path from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const checking = process.argv.includes('--check');
-const assets = ['rewards.js', 'automation.js', 'core.js', 'background.js', 'popup.js', 'popup.html', 'popup.css', 'kick-quality.js', 'kick-player.js', 'site-status.js', 'icon.png'];
+const assets = ['rewards.js', 'pokeidle-state.js', 'automation.js', 'core.js', 'background.js', 'popup.js', 'popup.html', 'popup.css', 'kick-quality.js', 'kick-player.js', 'site-status.js', 'pokeidle.js', 'icon.png'];
 const browsers = ['firefox', 'chromium', 'opera-gx', 'firefox-android'];
+const firefoxModules = new Set(['rewards.js', 'pokeidle-state.js', 'automation.js', 'core.js', 'background.js']);
+const contentScripts = new Set(['kick-quality.js', 'site-status.js', 'pokeidle.js']);
 
 export async function expectedFiles(browser) {
   const files = new Map();
@@ -14,9 +16,9 @@ export async function expectedFiles(browser) {
   for (const file of assets) {
     if (file.endsWith('.png')) { files.set(file, await readFile(path.join(root, 'src', file))); continue; }
     let source = await readFile(path.join(root, 'src', file), 'utf8');
-    if (browser.startsWith('firefox') && ['core.js', 'rewards.js', 'automation.js'].includes(file)) source = source.replace(/^export /gm, '');
-    if (['kick-quality.js', 'site-status.js'].includes(file)) source = source.replace(/^export /gm, '');
-    if (browser.startsWith('firefox') && ['core.js', 'background.js'].includes(file)) source = source.replace(/^import .* from .*;\n/gm, '');
+    if ((browser.startsWith('firefox') && firefoxModules.has(file)) || contentScripts.has(file)) {
+      source = source.replace(/^export /gm, '').replace(/^import .* from .*;\r?\n/gm, '');
+    }
     files.set(file, source);
   }
   return files;

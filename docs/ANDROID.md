@@ -52,3 +52,9 @@ Referências usadas: [compatibilidade MDN de tabs](https://github.com/mdn/browse
 A distribuição Android agora também reúne checklist, leituras manuais de XP/pontos, alertas, limites e agenda. As limitações de execução do Android permanecem: alarmes podem atrasar durante suspensão e não há serviço nativo que mantenha o aparelho acordado.
 
 Há um fluxo de assinatura **universal Firefox desktop + Android**, a partir desta mesma pasta, em [ASSINATURA-MOZILLA.md](ASSINATURA-MOZILLA.md). Ter um XPI assinado antigo ou uma conta Mozilla não assina as alterações automaticamente. A versão nova só estará assinada quando o serviço retornar um novo XPI. Confirme ID, versão, propriedade da conta e instalação no aparelho real.
+
+## Widget PokeIdle na versão0.7
+
+O pacote Android também inclui a leitura do widget PokeIdle e o modo de lives Twitch automáticas. A aba do jogo precisa continuar aberta, com o widget carregado e dados recentes; Android pode suspender essa aba ou os vídeos quando você muda de app ou bloqueia a tela. A extensão não evita esse comportamento. Sem novas amostras por três minutos ou após fechar a aba PokeIdle, ela deixa de iniciar novos canais dessa origem.
+
+Atualize as permissões de acesso a `pokeidle.io` após recarregar, confira os dados no painel e use [POKEIDLE.md](POKEIDLE.md). A versão alterada exige assinatura Mozilla nova antes de ser distribuída como XPI; a assinatura da versão anterior não é reutilizável. Não houve validação nativa Android da versão0.7 neste ambiente.

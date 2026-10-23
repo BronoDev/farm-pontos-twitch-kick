@@ -47,6 +47,7 @@ async function background({ initial = {}, initialAlarms = [] } = {}) {
         return tab;
       },
       get: async id => { if (!tabs.has(id)) throw Error('Aba não encontrada'); return tabs.get(id); },
+      query: async () => [...tabs.values()].filter(tab => tab.url?.startsWith('https://pokeidle.io/')),
       update: async (id, values) => Object.assign(tabs.get(id), values),
       remove: async id => { tabs.delete(id); api.tabs.onRemoved.emit(id, { windowId: 1 }); },
       reload: async () => {},
@@ -65,7 +66,7 @@ async function background({ initial = {}, initialAlarms = [] } = {}) {
       create: async (id, options) => { notifications.push({ id, ...structuredClone(options) }); return id; }
     }
   };
-  const context = vm.createContext({ browser: api, URL, Date: ClockDate,
+  const context = vm.createContext({ browser: api, URL, Date: ClockDate, setTimeout, clearTimeout,
     setInterval: () => assert.fail('A agenda deve usar alarms em vez de um intervalo permanente') });
   for (const script of manifest.background.scripts) {
     vm.runInContext(await readFile(new URL(script, base), 'utf8'), context, { filename: script });
@@ -214,4 +215,42 @@ test('clique em notificação abre somente o painel da extensão', async () => {
   assert.equal(b.opened[0].url, b.api.runtime.getURL('popup.html'));
   assert.equal(b.opened[0].active, true);
   assert.equal(Object.keys(b.data.sessions).length, 0);
+});
+
+test('sincronizar PokeIdle aguarda a leitura fora da fila e retorna o estado atualizado', { timeout: 3000 }, async () => {
+  const b = await background();
+  b.tabs.set(90, { id: 90, url: 'https://pokeidle.io/app', active: true });
+  const source = { id: b.api.runtime.id, tab: { id: 90 }, url: 'https://pokeidle.io/app', frameId: 0 };
+  let sampled = false;
+  b.api.tabs.sendMessage = async (id, message) => {
+    if (id !== 90 || message.type !== 'requestPokeIdleSnapshot') return { ok: true };
+    const response = await b.send({ type: 'pokeidleSnapshot', snapshot: { ready: true,
+      channels: [{ name: 'tftoddy', live: true, bonus: true, missing: true }], ruleText: '+15%' } }, source);
+    assert.equal(response.state.accepted, true);
+    assert.deepEqual(Object.keys(response.state), ['accepted'], 'A página não recebe contas, saldos ou o estado do painel');
+    sampled = true;
+    return { accepted: true };
+  };
+  const refreshed = await b.send({ type: 'refreshPokeIdle' });
+  assert.equal(sampled, true);
+  assert.equal(refreshed.ok, true);
+  assert.equal(refreshed.state.pokeidle.observedAt, b.clock.now);
+  assert.equal(refreshed.state.pokeidle.channels.length, 1);
+  assert.equal(refreshed.state.sessions['twitch:tftoddy'].media, 'live');
+  assert.equal(b.opened[0].url, 'https://www.twitch.tv/tftoddy');
+  await b.send({ type: 'stopAll' });
+  await b.send({ type: 'refreshPokeIdle' });
+  assert.equal(b.opened.length, 1, 'Atualização não desfaz Fechar todos');
+});
+
+test('PokeIdle só envia snapshot restrito; não ganha comandos do painel', async () => {
+  const b = await background();
+  b.tabs.set(90, { id: 90, url: 'https://pokeidle.io/app' });
+  const source = { id: b.api.runtime.id, tab: { id: 90 }, url: 'https://pokeidle.io/app' };
+  assert.equal(b.api.runtime.onMessage.emit({ type: 'startAll' }, source, () => assert.fail())[0], false);
+  const rejected = await b.send({ type: 'pokeidleSnapshot', snapshot: { ready: true,
+    channels: [{ name: 'tftoddy', live: true, bonus: true, missing: true }] } }, { ...source, url: 'https://pokeidle.io/application' });
+  assert.equal(rejected.state.accepted, false);
+  assert.equal(b.opened.length, 0);
+  assert.deepEqual(Object.keys(rejected.state), ['accepted']);
 });

@@ -14,7 +14,7 @@ export function operationalState(raw, channels) {
 export function availableSlot(state, item) {
   if (Object.keys(state.sessions).length >= state.settings.maxConcurrent) return false;
   if (item.platform !== 'kick' || !state.kickLive) return true;
-  return Object.values(state.sessions).filter(session => session.media === 'live').length < state.settings.maxKickLives;
+  return Object.entries(state.sessions).filter(([id, session]) => session.media === 'live' && state.channels.some(c => c.id === id && c.platform === 'kick')).length < state.settings.maxKickLives;
 }
 
 export function enqueueChannel(state, id, owner = 'manual') {
@@ -27,9 +27,9 @@ export function removeQueued(state, id) {
   delete state.queueSources[id];
 }
 
-export function scheduledOwnersAlive(state, session, now) {
+export function scheduledOwnersAlive(state, session, now, extraOwners = []) {
   const owners = session.ownerIds || ['manual'];
-  return owners.some(owner => owner === 'manual' || state.schedules.some(s => s.id === owner && s.enabled && now >= s.startsAt && now < s.endsAt));
+  return owners.some(owner => owner === 'manual' || extraOwners.includes(owner) || state.schedules.some(s => s.id === owner && s.enabled && now >= s.startsAt && now < s.endsAt));
 }
 
 export function dueSchedules(state, now) {

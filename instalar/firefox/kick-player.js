@@ -3,6 +3,7 @@
   const api = globalThis.browser ?? globalThis.chrome;
   if (!api?.runtime) return;
   let stopped = false;
+  let managed = false;
   let video;
   let targetHeight = 0;
   let qualityStatus = 'pending';
@@ -22,7 +23,7 @@
     clearTimeout(reportTimer);
     reportTimer = setTimeout(async () => {
       if (stopped || location.href !== originalUrl) { cleanup(); return; }
-      const result = await send('kickTelemetry', { sample: {
+      const result = await send('playerTelemetry', { sample: {
         playing: !!video && !video.paused && !video.ended && video.readyState >= 3,
         error: !!video?.error,
         height: video?.videoHeight || 0,
@@ -34,7 +35,9 @@
   }
   function attachVideo() {
     if (location.href !== originalUrl) { cleanup(); return; }
-    const candidate = document.querySelector('video');
+    const candidate = document.querySelector('[data-a-target="video-player"] video')
+      || document.querySelector('[data-test-selector="video-player__video-container"] video')
+      || document.querySelector('[data-player] video') || document.querySelector('video');
     if (!candidate || candidate === video || stopped) return;
     for (const [element, event, handler] of listeners.splice(0)) element.removeEventListener(event, handler);
     video = candidate;
@@ -59,7 +62,7 @@
     if (location.href !== originalUrl) { cleanup(); return; }
     if (stopped || targetHeight || !video) return;
     // Procura apenas controles do player e seus menus; não altera APIs privadas.
-    const root = video.closest('[data-player], .video-js, [data-testid*="player"], [class*="player-container"]') || video.parentElement?.parentElement || document.body;
+    const root = video.closest('[data-a-target="video-player"], [data-test-selector="video-player__video-container"], [data-player], .video-js, [data-testid*="player"], [class*="player-container"]') || video.parentElement?.parentElement || document.body;
     let options = qualityOptions(document);
     if (!options.length) {
       const quality = playerButton(root, 'quality');
@@ -86,15 +89,15 @@
   }
   function cleanup() {
     stopped = true;
+    managed = false;
     clearTimeout(reportTimer);
     for (const timer of timers) clearTimeout(timer);
     for (const [element, event, handler] of listeners) element.removeEventListener(event, handler);
   }
   async function run() {
     // A aba pode carregar antes de o controlador terminar de salvar sua identificação.
-    let managed = false;
     for (let attempt = 0; attempt < 5 && !stopped; attempt++) {
-      if ((await send('kickContext'))?.managed) { managed = true; break; }
+      if ((await send('playerContext'))?.managed) { managed = true; break; }
       await delay(500);
     }
     if (!managed || stopped) return;
@@ -110,6 +113,12 @@
     if (!targetHeight && qualityStatus !== 'autoplay-blocked') qualityStatus = 'unavailable';
     report();
   }
+  api.runtime.onMessage?.addListener((message, sender, sendResponse) => {
+    if (message.type !== 'requestPlayerTelemetry' || sender.id !== api.runtime.id || stopped || !managed) return false;
+    report();
+    sendResponse({ ok: true });
+    return false;
+  });
   window.addEventListener('pagehide', cleanup, { once: true });
   void run();
 })();

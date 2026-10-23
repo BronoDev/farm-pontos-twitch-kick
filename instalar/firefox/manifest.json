@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Chat Leve — Twitch e Kick",
-  "description": "Twitch em chat e Kick com vídeo na menor qualidade disponível, em segundo plano.",
-  "version": "0.6.0",
+  "description": "Organize bônus PokeIdle, lives Twitch/Kick e consumo em segundo plano.",
+  "version": "0.7.0",
   "permissions": [
     "storage",
     "tabs",
@@ -12,6 +12,7 @@
   "background": {
     "scripts": [
       "rewards.js",
+      "pokeidle-state.js",
       "automation.js",
       "core.js",
       "background.js"
@@ -35,13 +36,15 @@
   "host_permissions": [
     "https://kick.com/*",
     "https://www.kick.com/*",
-    "https://www.twitch.tv/*"
+    "https://www.twitch.tv/*",
+    "https://pokeidle.io/*"
   ],
   "content_scripts": [
     {
       "matches": [
         "https://kick.com/*",
-        "https://www.kick.com/*"
+        "https://www.kick.com/*",
+        "https://www.twitch.tv/*"
       ],
       "js": [
         "kick-quality.js",
@@ -57,6 +60,15 @@
       ],
       "js": [
         "site-status.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://pokeidle.io/app*"
+      ],
+      "js": [
+        "pokeidle.js"
       ],
       "run_at": "document_idle"
     }
