@@ -5,10 +5,12 @@ import path from 'node:path';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const checking = process.argv.includes('--check');
 const assets = ['core.js', 'background.js', 'popup.js', 'popup.html', 'popup.css'];
+const browsers = ['firefox', 'chromium', 'opera-gx'];
 
 export async function expectedFiles(browser) {
   const files = new Map();
-  files.set('manifest.json', await readFile(path.join(root, 'manifests', `${browser}.json`), 'utf8'));
+  const manifest = browser === 'opera-gx' ? 'chromium' : browser;
+  files.set('manifest.json', await readFile(path.join(root, 'manifests', `${manifest}.json`), 'utf8'));
   for (const file of assets) {
     let source = await readFile(path.join(root, 'src', file), 'utf8');
     if (browser === 'firefox' && file === 'core.js') source = source.replace(/^export /gm, '');
@@ -19,7 +21,7 @@ export async function expectedFiles(browser) {
 }
 
 export async function build(check = checking) {
-  for (const browser of ['firefox', 'chromium']) {
+  for (const browser of browsers) {
     const dir = path.join(root, 'instalar', browser);
     const files = await expectedFiles(browser);
     if (!check) await mkdir(dir, { recursive: true });
@@ -36,5 +38,5 @@ export async function build(check = checking) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   await build();
-  console.log(checking ? 'Pastas de instalação atualizadas.' : 'Geradas instalar/firefox e instalar/chromium.');
+  console.log(checking ? 'Pastas de instalação atualizadas.' : `Geradas ${browsers.map(browser => `instalar/${browser}`).join(', ')}.`);
 }

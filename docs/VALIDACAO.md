@@ -25,6 +25,8 @@ A validação do pacote não produz assinatura nem comprova execução no Firefo
 
 ## Verificação manual necessária
 
+Para Opera GX, carregue a pasta `instalar/opera-gx` em `opera://extensions`, com **Modo do desenvolvedor → Carregar sem compactação**, e repita os passos de uso abaixo a partir do item 2. O pacote é gerado com a mesma base Chromium da versão Chrome/Edge. O ambiente não possui Opera GX; a instalação nativa, o consumo de recursos e os pontos nesse navegador permanecem sem validação.
+
 1. Carregue `instalar/firefox/manifest.json` em `about:debugging#/runtime/this-firefox` usando **Carregar extensão temporária…** (Firefox 142+).
 2. Abra o painel, adicione Kick/yetz e um canal Twitch. Confira se só os chats abrem.
 3. Feche e abra o painel; confirme que os canais continuam listados.
