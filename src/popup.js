@@ -1,5 +1,6 @@
 const list = document.querySelector('#channels');
 const errorBox = document.querySelector('#error');
+const api = globalThis.browser ?? globalThis.chrome;
 let busy = false;
 
 function render(state) {
@@ -44,7 +45,7 @@ async function command(message) {
   errorBox.hidden = true;
   document.querySelectorAll('button').forEach(b => { b.disabled = true; });
   try {
-    const result = await chrome.runtime.sendMessage(message);
+    const result = await api.runtime.sendMessage(message);
     if (!result?.ok) throw new Error(result?.error || 'O navegador não respondeu. Tente novamente.');
     render(result.state);
     if (message.type === 'add') document.querySelector('#channel').value = '';

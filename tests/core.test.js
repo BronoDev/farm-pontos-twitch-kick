@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { channel, chatUrl, createController } from '../extension/core.js';
+import { channel, chatUrl, createController } from '../src/core.js';
 
 function browser() {
   const data = {};

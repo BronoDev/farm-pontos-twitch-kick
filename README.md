@@ -1,17 +1,44 @@
 # Chat Leve — Twitch e Kick
 
-Extensão local para Chrome e Edge que organiza canais e abre os **pop-ups oficiais de chat**, sem abrir o player. Feita em JavaScript, sem frameworks, pacotes externos ou servidor próprio. O navegador continua necessário: cada chat tem seu próprio consumo de memória e rede.
+Extensão local para Firefox, Chrome e Edge que organiza canais e abre os **pop-ups oficiais de chat**, sem abrir o player. Feita em JavaScript, sem frameworks, pacotes externos ou servidor próprio. O navegador continua necessário: cada chat tem seu próprio consumo de memória e rede.
 
 ## Instalar no seu computador
 
-1. Baixe este projeto e extraia os arquivos, se estiverem em ZIP.
-2. No Chrome, abra `chrome://extensions`; no Edge, `edge://extensions`.
-3. Ative **Modo do desenvolvedor**.
-4. Clique em **Carregar sem compactação** e selecione a pasta **extension** deste projeto (a que contém `manifest.json`).
-5. Entre normalmente na Twitch e na Kick nesse mesmo perfil do navegador. A extensão não pede senha, token nem cookies.
-6. Abra a extensão, escolha Kick e adicione `yetz` ou `https://kick.com/yetz`. Clique em **Abrir chat**. Repita para outros canais e para Twitch.
+**[Abra o guia LEIA-PRIMEIRO.md](LEIA-PRIMEIRO.md)** para instalar sem ferramentas de desenvolvimento.
 
-Os chats ficam em janelas separadas e continuam abertos ao fechar o painel da extensão. Use **Fechar chat** para encerrar uma sessão. **Remover** também fecha o chat correspondente, se ainda estiver naquela página. **Atualizar** identifica chats fechados manualmente. Não há abertura automática ao iniciar o navegador: reabra pelo painel.
+| Navegador | Download pronto | Caminho no repositório completo |
+| --- | --- | --- |
+| Firefox 142+ (temporário, sem assinatura) | [chat-leve-firefox.zip](https://github.com/BronoDev/farm-pontos-twitch-kick/raw/refs/heads/main/downloads/chat-leve-firefox.zip) | `instalar/firefox/manifest.json` |
+| Chrome/Edge | [chat-leve-chromium.zip](https://github.com/BronoDev/farm-pontos-twitch-kick/raw/refs/heads/main/downloads/chat-leve-chromium.zip) | `instalar/chromium/` |
+
+**Firefox:** extraia o pacote, abra `about:debugging#/runtime/this-firefox`, escolha **Carregar extensão temporária…** e selecione `manifest.json`. Não instale o ZIP como extensão permanente: o pacote não tem assinatura da Mozilla. O Firefox pode mostrar “danificado” ao tentar essa instalação. A versão original também usava um service worker específico de Chromium; agora há um pacote separado com scripts de segundo plano compatíveis com Firefox. Uma mensagem genérica de erro não permite determinar qual dessas causas ocorreu no seu computador.
+
+O carregamento temporário termina quando o Firefox é encerrado e não garante retenção dos dados locais entre carregamentos. Para instalar permanentemente, ainda será necessária a assinatura pela Mozilla (AMO, listado ou não listado). Isso exige a conta do mantenedor; não há `.xpi` assinado disponível. Não desative a verificação de assinatura.
+
+**Chrome/Edge:** extraia o pacote, abra `chrome://extensions` ou `edge://extensions`, ative **Modo do desenvolvedor** e escolha a pasta extraída em **Carregar sem compactação**.
+
+Entre na Twitch e na Kick no mesmo perfil do navegador. Abra a extensão, escolha a plataforma, adicione `yetz` ou `https://kick.com/yetz` e clique em **Abrir chat**. A extensão não pede senha, token nem cookies.
+
+Os chats ficam em janelas separadas e continuam abertos ao fechar o painel. Use **Fechar chat** para encerrar uma sessão. **Remover** também fecha o chat correspondente, se ainda estiver naquela página. **Atualizar** identifica chats fechados manualmente. Reabra os chats pelo painel depois de reiniciar o navegador.
+
+## Organização dos arquivos
+
+```text
+LEIA-PRIMEIRO.md         → passos de instalação
+instalar/
+  firefox/              → extensão pronta para Firefox
+    manifest.json       → selecione este arquivo no carregamento temporário
+  chromium/             → pasta pronta para Chrome/Edge
+    manifest.json
+downloads/              → ZIPs de cada navegador, com manifest.json na raiz
+src/                    → código compartilhado; edite aqui
+manifests/              → configurações específicas de cada navegador
+scripts/                → geração e empacotamento sem dependências externas
+tests/                  → testes automatizados
+docs/                   → detalhes de validação e limitações
+```
+
+As pastas `instalar/` e os arquivos `downloads/` já vêm prontos. Não selecione `src/` nem `manifests/` no navegador. Para alterações no código, regenere as distribuições com `npm run package`.
 
 ## Pontos de canal e PokeIdle
 
@@ -35,18 +62,18 @@ Minimizar, suspender abas, economizadores de memória e o computador em suspens�
 
 Sem telemetria, scripts injetados, leitura de mensagens, coleta de cookies ou envio de credenciais. A extensão abre as páginas oficiais, que fazem suas próprias conexões de rede. Os arquivos da extensão não carregam bibliotecas remotas.
 
-## Desenvolvimento na nuvem
+## Desenvolvimento
 
-Requer Node.js 22 ou superior para os testes; a extensão em si roda no navegador. Nenhuma instalação de dependências é necessária.
+Requer Node.js 22+ para testes/geração e Python 3 para os ZIPs. Não há dependências para instalar. Para usar a extensão, basta o navegador.
 
 ```sh
-cd /workspace/farm-pontos-twitch-kick
-npm run check
+npm run package   # gera instalar/ e downloads/ a partir de src/ e manifests/
+npm run check     # verifica sintaxe e consistência dos arquivos gerados
 npm test
 ```
 
-Os testes exercitam o controlador com uma API de navegador simulada: persistência, URLs, prevenção de duplicação, fechamento seguro, reabertura e recuperação de falhas. Eles não validam o carregamento dos sites nem a concessão de pontos. A validação final exige carregar a extensão em um navegador com suas sessões pessoais.
+A geração é determinística e não altera o código-fonte. Não edite manualmente os arquivos de `instalar/`. No Firefox, o gerador converte o núcleo compartilhado em script clássico e o manifesto carrega esse script antes de `background.js`. No Chromium, o mesmo núcleo é importado pelo service worker como módulo.
 
-Na criação do projeto, passaram os 7 testes do controlador e as verificações de sintaxe. A interface também foi exercitada no Chromium com a API de extensão simulada (adicionar, abrir, fechar, remover e exibir erro). O teste nativo da extensão ficou bloqueado no Chromium 154 desta máquina: o carregamento por linha de comando não ativou o service worker, e o método CDP `Extensions.loadUnpacked` retornou `Method not available`. Isso não confirma o funcionamento nativo no navegador do usuário; a instalação manual acima e a conferência dos pontos continuam pendentes. O proxy deste ambiente também negou acesso aos sites Twitch, Kick e PokeIdle.
+Os testes usam APIs de navegador simuladas; não validam pontos, login ou conexões aos serviços. Consulte [as verificações e limitações](docs/VALIDACAO.md).
 
-Não é necessário servidor, build ou Git worktree. Use o checkout existente. Não coloque credenciais no repositório.
+Na nuvem, use o checkout existente em `/workspace/farm-pontos-twitch-kick`. Não é necessário servidor ou Git worktree. Não coloque credenciais no repositório.
