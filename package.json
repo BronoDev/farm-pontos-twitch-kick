@@ -1,9 +1,9 @@
 {
   "name": "chat-leve",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Gerenciador local de pop-ups de chat da Twitch e Kick",
+  "description": "Gerenciador local de chats em segundo plano da Twitch e Kick",
   "engines": { "node": ">=22" },
   "scripts": {
     "build": "node scripts/build.mjs",

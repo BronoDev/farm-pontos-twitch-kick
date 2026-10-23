@@ -1,6 +1,6 @@
 # Chat Leve — Twitch e Kick
 
-Extensão local para Firefox, Chrome, Edge e Opera GX que organiza canais e abre os **pop-ups oficiais de chat**, sem abrir o player. Feita em JavaScript, sem frameworks, pacotes externos ou servidor próprio. O navegador continua necessário: cada chat tem seu próprio consumo de memória e rede.
+Extensão local para Firefox, Chrome, Edge e Opera GX que organiza canais e abre os **chats oficiais em abas silenciosas de segundo plano**, sem abrir o player nem janelas de pop-up. Feita em JavaScript, sem frameworks, pacotes externos ou servidor próprio. O navegador continua necessário: cada chat tem seu próprio consumo de memória e rede.
 
 ## Instalar no seu computador
 
@@ -20,9 +20,18 @@ O carregamento temporário termina quando o Firefox é encerrado e não garante 
 
 **Opera GX:** extraia o pacote Opera GX, abra `opera://extensions`, ative **Modo do desenvolvedor** e clique em **Carregar sem compactação** (ou **Load unpacked**). Selecione a pasta extraída com `manifest.json`. No repositório completo, a pasta é `instalar/opera-gx/`. O pacote compartilha a base Chromium e exige navegador atualizado com Chromium 109+. Faça login nas plataformas dentro do próprio Opera GX.
 
-Entre na Twitch e na Kick no mesmo perfil do navegador. Abra a extensão, escolha a plataforma, adicione `yetz` ou `https://kick.com/yetz` e clique em **Abrir chat**. A extensão não pede senha, token nem cookies.
+Entre na Twitch e na Kick no mesmo perfil do navegador. Abra a extensão, escolha a plataforma, adicione `yetz` ou `https://kick.com/yetz` e clique em **Iniciar** ou **Iniciar todos**. A extensão não pede senha, token nem cookies.
 
-Os chats ficam em janelas separadas e continuam abertos ao fechar o painel. Use **Fechar chat** para encerrar uma sessão. **Remover** também fecha o chat correspondente, se ainda estiver naquela página. **Atualizar** identifica chats fechados manualmente. Reabra os chats pelo painel depois de reiniciar o navegador.
+### Iniciar e fechar tudo
+
+- **Iniciar todos:** abre uma aba inativa de chat por canal cadastrado, sem trocar a aba atual, e silencia o áudio. Canais já abertos pela extensão não são duplicados.
+- **Fechar todos:** fecha as abas gerenciadas, mantém a lista para iniciar novamente e preserva outras abas do navegador. Se você navegou para outro site em uma aba gerenciada, ela também é preservada.
+- **Iniciar / Fechar chat:** controle individual por canal.
+- **Atualizar:** verifica quais abas ainda existem; não verifica autenticação, conexão com o servidor ou pontos.
+
+As abas continuam funcionando quando você fecha o painel da extensão. Elas ficam na barra de abas, em segundo plano: **não são processos invisíveis nem uma conexão direta de chat sem navegador**. Não há player, janelas de pop-up, temporizadores de consulta ou bloqueio da suspensão de abas. O consumo depende das páginas de chat, de quantos canais você abre e do navegador; não há redução de memória medida ou garantida. Fechar todos encerra as abas gerenciadas; a liberação de memória segue o gerenciamento do navegador.
+
+Se algum canal falhar ao iniciar ou fechar, os demais continuam sendo processados e o painel mostra um aviso. As sessões abertas são salvas a cada canal, permitindo fechar os resultados parciais. Ao iniciar uma sessão de uma versão antiga, seu pop-up é substituído pela aba em segundo plano. Depois de reiniciar o navegador, reabra pelo painel se necessário; não há inicialização automática.
 
 ## Organização dos arquivos
 
@@ -54,11 +63,11 @@ O usuário relatou que o pop-up de chat da Kick acumula pontos no canal `yetz`. 
 Para verificar no seu computador:
 
 1. Anote o saldo de pontos e XP e confirme que o canal está ao vivo.
-2. Feche o player e mantenha apenas o chat aberto, com sua conta conectada.
+2. Feche o player e mantenha apenas a aba do chat aberta, com sua conta conectada.
 3. Aguarde o intervalo normal de concessão do canal e confira novamente o saldo no site oficial/PokeIdle.
-4. Se não aumentar, confira o login, erros do chat e as regras atuais do bônus. Não interprete o tempo com a janela aberta como pontos recebidos.
+4. Se não aumentar, confira o login, erros do chat e as regras atuais do bônus. Não interprete o tempo com a aba aberta como pontos recebidos.
 
-Minimizar, suspender abas, economizadores de memória e o computador em suspensão podem afetar o funcionamento. A extensão não impede suspensão, não mantém vídeo oculto e não simula eventos de audiência. Os critérios de pontos e XP pertencem às plataformas e ao bot. Não há garantia de acúmulo só com chat em ambas as plataformas.
+Suspender abas, economizadores de memória e o computador em suspensão podem afetar o funcionamento. A extensão não impede suspensão, não mantém vídeo oculto e não simula eventos de audiência. Os critérios de pontos e XP pertencem às plataformas e ao bot. Não há garantia de acúmulo só com chat em ambas as plataformas.
 
 ## Privacidade e permissões
 

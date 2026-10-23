@@ -17,15 +17,18 @@ test('pacote Firefox carrega seus scripts clássicos e atende mensagens com brow
       get: async () => structuredClone(data),
       set: async next => { data = structuredClone(next); }
     } },
-    windows: { create: async options => {
-      const id = ++opens;
-      tabs.set(id, { url: options.url });
-      return { tabs: [{ id }] };
-    } },
     tabs: {
+      create: async options => {
+        const id = ++opens;
+        const tab = { id, url: options.url, active: options.active };
+        tabs.set(id, tab);
+        return tab;
+      },
       get: async id => tabs.get(id),
-      remove: async id => tabs.delete(id)
+      remove: async id => tabs.delete(id),
+      update: async (id, options) => Object.assign(tabs.get(id), options)
     }
+
   };
   // Firefox a partir do manifesto: sem import/export e sem chrome.* disponível.
   const context = vm.createContext({ browser: api, URL });
@@ -43,7 +46,7 @@ test('pacote Firefox carrega seus scripts clássicos e atende mensagens com brow
   ]);
   assert.equal(first.ok, true);
   assert.equal(second.ok, true);
-  assert.equal(opens, 1, 'mensagens concorrentes não duplicam janelas');
+  assert.equal(opens, 1, 'mensagens concorrentes não duplicam abas');
   assert.equal((await send({ type: 'add', platform: 'kick', input: '<script>' })).ok, false);
   assert.equal((await send({ type: 'status' })).ok, true, 'erro não bloqueia mensagens posteriores');
   assert.equal((await send({ type: 'stop', id: 'kick:yetz' })).ok, true);

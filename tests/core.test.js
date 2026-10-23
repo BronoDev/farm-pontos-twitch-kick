@@ -15,14 +15,18 @@ function browser() {
     } },
     tabs: {
       get: async id => { if (!tabs.has(id)) throw new Error('Aba fechada'); return tabs.get(id); },
-      remove: async id => { removed.push(id); tabs.delete(id); }
+      remove: async id => { removed.push(id); tabs.delete(id); },
+      create: async options => {
+        opened.push(options);
+        const id = nextId++;
+        const tab = { id, url: options.url, active: options.active };
+        tabs.set(id, tab);
+        return tab;
+      },
+      update: async (id, options) => { Object.assign(tabs.get(id), options); return tabs.get(id); }
     },
-    windows: { create: async options => {
-      opened.push(options);
-      const id = nextId++;
-      tabs.set(id, { id, url: options.url });
-      return { tabs: [{ id }] };
-    } }
+    windows: { create: async () => { throw new Error('Não deve abrir janelas'); } }
+
   };
   return { api, tabs, opened, removed, run: createController(api) };
 }
@@ -41,7 +45,7 @@ test('gera URLs de chat, sem URL do player', () => {
   assert.equal(chatUrl(channel('twitch', 'yetz')), 'https://www.twitch.tv/popout/yetz/chat?popout=');
 });
 
-test('persiste canais sem duplicar e abre somente um pop-up por canal', async () => {
+test('persiste canais sem duplicar e abre somente uma aba em segundo plano por canal', async () => {
   const b = browser();
   await b.run({ type: 'add', platform: 'kick', input: 'Yetz' });
   const state = await b.run({ type: 'add', platform: 'kick', input: 'yetz' });
@@ -49,7 +53,8 @@ test('persiste canais sem duplicar e abre somente um pop-up por canal', async ()
   await b.run({ type: 'start', id: 'kick:yetz' });
   const started = await b.run({ type: 'start', id: 'kick:yetz' });
   assert.equal(b.opened.length, 1);
-  assert.equal(b.opened[0].type, 'popup');
+  assert.equal(b.opened[0].active, false);
+  assert.equal(b.tabs.get(1).muted, true);
   assert.equal(started.sessions['kick:yetz'].tabId, 1);
   assert.ok(started.sessions['kick:yetz'].openedAt);
   const restartedWorker = createController(b.api);
@@ -91,10 +96,90 @@ test('detecta fechamento manual e permite reabrir', async () => {
 test('falha na abertura não inventa uma sessão e pode ser recuperada', async () => {
   const b = browser();
   await b.run({ type: 'add', platform: 'kick', input: 'yetz' });
-  const create = b.api.windows.create;
-  b.api.windows.create = async () => { throw new Error('Bloqueado'); };
+  const create = b.api.tabs.create;
+  b.api.tabs.create = async () => { throw new Error('Bloqueado'); };
   await assert.rejects(b.run({ type: 'start', id: 'kick:yetz' }), /Bloqueado/);
   assert.deepEqual((await b.run({ type: 'status' })).sessions, {});
-  b.api.windows.create = create;
+  b.api.tabs.create = create;
   assert.ok((await b.run({ type: 'start', id: 'kick:yetz' })).sessions['kick:yetz']);
+});
+
+test('inicia e fecha todos sem duplicar e preserva lista e abas pessoais', async () => {
+  const b = browser();
+  await b.run({ type: 'add', platform: 'kick', input: 'yetz' });
+  await b.run({ type: 'add', platform: 'twitch', input: 'outro' });
+  b.tabs.set(99, { id: 99, url: 'https://example.com' });
+  await b.run({ type: 'startAll' });
+  await b.run({ type: 'startAll' });
+  assert.equal(b.opened.length, 2);
+  assert.ok(b.opened.every(options => options.active === false));
+  assert.ok([b.tabs.get(1), b.tabs.get(2)].every(tab => tab.muted));
+  const stopped = await b.run({ type: 'stopAll' });
+  assert.equal(stopped.channels.length, 2);
+  assert.deepEqual(stopped.sessions, {});
+  assert.ok(b.tabs.has(99));
+  await b.run({ type: 'startAll' });
+  assert.equal(b.opened.length, 4);
+});
+
+test('falha parcial ao iniciar todos não impede os demais nem perde sessões', async () => {
+  const b = browser();
+  for (const name of ['primeiro', 'falha', 'terceiro']) await b.run({ type: 'add', platform: 'kick', input: name });
+  const create = b.api.tabs.create;
+  b.api.tabs.create = async options => {
+    if (options.url.includes('/falha/')) throw new Error('Não foi possível abrir');
+    return create(options);
+  };
+  const result = await b.run({ type: 'startAll' });
+  assert.deepEqual(Object.keys(result.sessions), ['kick:primeiro', 'kick:terceiro']);
+  assert.equal(result.warnings.length, 1);
+  const restarted = createController(b.api);
+  assert.equal(Object.keys((await restarted({ type: 'status' })).sessions).length, 2);
+  await restarted({ type: 'stopAll' });
+  assert.equal(b.tabs.size, 0);
+});
+
+test('falha parcial ao fechar mantém a sessão para tentar de novo e continua as demais', async () => {
+  const b = browser();
+  for (const name of ['primeiro', 'segundo']) await b.run({ type: 'add', platform: 'kick', input: name });
+  await b.run({ type: 'startAll' });
+  const remove = b.api.tabs.remove;
+  b.api.tabs.remove = async id => { if (id === 1) throw new Error('Falha ao fechar'); await remove(id); };
+  const result = await b.run({ type: 'stopAll' });
+  assert.deepEqual(Object.keys(result.sessions), ['kick:primeiro']);
+  assert.equal(result.warnings.length, 1);
+  b.api.tabs.remove = remove;
+  assert.deepEqual((await b.run({ type: 'stopAll' })).sessions, {});
+});
+
+test('fechar todos preserva uma aba de chat que foi usada para outro site', async () => {
+  const b = browser();
+  await b.run({ type: 'add', platform: 'kick', input: 'yetz' });
+  await b.run({ type: 'startAll' });
+  b.tabs.set(1, { id: 1, url: 'https://example.com' });
+  assert.deepEqual((await b.run({ type: 'stopAll' })).sessions, {});
+  assert.ok(b.tabs.has(1));
+  assert.deepEqual(b.removed, []);
+});
+
+test('falha ao silenciar mantém aba registrada para ser fechada e mostra aviso', async () => {
+  const b = browser();
+  await b.run({ type: 'add', platform: 'kick', input: 'yetz' });
+  b.api.tabs.update = async () => { throw new Error('Falha de áudio'); };
+  const state = await b.run({ type: 'start', id: 'kick:yetz' });
+  assert.ok(state.sessions['kick:yetz']);
+  assert.equal(state.warnings.length, 1);
+  await b.run({ type: 'stopAll' });
+  assert.equal(b.tabs.size, 0);
+});
+
+test('migra sessão antiga de pop-up para aba em segundo plano', async () => {
+  const b = browser();
+  await b.run({ type: 'add', platform: 'kick', input: 'yetz' });
+  b.tabs.set(50, { id: 50, url: 'https://kick.com/popout/yetz/chat' });
+  await b.api.storage.local.set({ sessions: { 'kick:yetz': { tabId: 50, openedAt: 1 } } });
+  const result = await b.run({ type: 'startAll' });
+  assert.deepEqual(b.removed, [50]);
+  assert.equal(result.sessions['kick:yetz'].mode, 'background');
+  assert.equal(b.opened[0].active, false);
 });

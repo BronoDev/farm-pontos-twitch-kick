@@ -2,7 +2,7 @@ import { createController } from './core.js';
 
 const api = globalThis.browser ?? globalThis.chrome;
 const execute = createController(api);
-// Serializa mensagens para evitar pop-ups duplicados e perda de atualizações.
+// Serializa mensagens para evitar abas duplicadas e perda de atualizações.
 let queue = Promise.resolve();
 api.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== api.runtime.id) return false;

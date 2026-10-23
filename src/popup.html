@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <header><span class="eyebrow">TWITCH + KICK</span><h1>Chat Leve<span>●</span></h1><p>Seus canais. Só o chat.</p></header>
+  <header><span class="eyebrow">TWITCH + KICK</span><h1>Chat Leve<span>●</span></h1><p>Seus chats em segundo plano. Sem player.</p></header>
   <main>
     <form id="add-form">
       <label>Plataforma<select id="platform"><option value="kick">Kick</option><option value="twitch">Twitch</option></select></label>
@@ -15,6 +15,9 @@
       <button type="submit">Adicionar</button>
     </form>
     <p id="error" role="alert" hidden></p>
+    <div class="bulk-actions" aria-label="Controle de todos os canais"><button id="start-all">Iniciar todos</button><button id="stop-all" class="secondary">Fechar todos</button></div>
+    <p id="summary" role="status" class="hint"></p>
+    <p class="hint">Os chats usam abas silenciosas sem tirar o foco. Elas continuam na barra de abas; feche todas pelo botão acima para liberar os recursos.</p>
     <section aria-label="Seus canais"><div class="section-title"><h2>Seus canais</h2><button id="refresh" class="secondary">Atualizar</button></div><div id="channels"></div></section>
     <aside><strong>Chat aberto ≠ pontos confirmados</strong><p>Faça login na plataforma pelo navegador. Os bônus dependem das regras do canal, do PokeIdle e da plataforma. Confira o saldo antes e depois de usar.</p></aside>
     <a href="https://pokeidle.io/app" target="_blank" rel="noopener noreferrer">Abrir PokeIdle ↗</a>

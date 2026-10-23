@@ -42,9 +42,36 @@ function createController(api) {
   }
   return async function execute(message) {
     const state = await read();
+    const warnings = [];
+    async function save() { await api.storage.local.set(state); }
     for (const [id, session] of Object.entries(state.sessions)) {
       const item = state.channels.find(c => c.id === id);
       if (!item || !await alive(session, item)) delete state.sessions[id];
+    }
+    async function stop(item) {
+      const session = state.sessions[item.id];
+      // A sessão pode pertencer a uma janela antiga ou a uma aba em segundo plano.
+      // Nunca fecha uma aba reutilizada para outra página.
+      if (session && await alive(session, item)) await api.tabs.remove(session.tabId);
+      delete state.sessions[item.id];
+      await save();
+    }
+    async function start(item) {
+      const existing = state.sessions[item.id];
+      if (existing?.mode === 'background') return;
+      // Migra os pop-ups das versões anteriores quando o usuário inicia o canal.
+      if (existing) await stop(item);
+      const tab = await api.tabs.create({ url: chatUrl(item), active: false });
+      if (!Number.isInteger(tab?.id)) throw new Error('O navegador não retornou a aba do chat.');
+      // Salva imediatamente: mesmo uma falha posterior pode ser encerrada pelo painel.
+      state.sessions[item.id] = { tabId: tab.id, openedAt: Date.now(), mode: 'background' };
+      await save();
+      try { await api.tabs.update(tab.id, { muted: true }); }
+      catch { warnings.push(`${item.name}: não foi possível silenciar a aba. Verifique o áudio no navegador.`); }
+    }
+    async function apply(item, operation) {
+      try { await operation(item); }
+      catch (error) { warnings.push(`${item.platform}/${item.name}: ${error.message}`); }
     }
     if (message.type === 'add') {
       const item = channel(message.platform, message.input);
@@ -52,21 +79,14 @@ function createController(api) {
     } else if (['start', 'stop', 'remove'].includes(message.type)) {
       const item = state.channels.find(c => c.id === message.id);
       if (!item) throw new Error('Canal não encontrado.');
-      const session = state.sessions[item.id];
-      if (message.type === 'start' && !session) {
-        const win = await api.windows.create({ url: chatUrl(item), type: 'popup', width: 420, height: 640, focused: false });
-        const tabId = win.tabs?.[0]?.id;
-        if (!Number.isInteger(tabId)) throw new Error('O navegador não retornou a aba do chat.');
-        state.sessions[item.id] = { tabId, openedAt: Date.now() };
-      }
-      if (message.type !== 'start') {
-        // Só fecha a aba registrada se ela ainda estiver no chat esperado.
-        if (session && await alive(session, item)) await api.tabs.remove(session.tabId);
-        delete state.sessions[item.id];
-        if (message.type === 'remove') state.channels = state.channels.filter(c => c.id !== item.id);
-      }
+      if (message.type === 'start') await start(item);
+      else await stop(item);
+      if (message.type === 'remove') state.channels = state.channels.filter(c => c.id !== item.id);
+    } else if (message.type === 'startAll' || message.type === 'stopAll') {
+      // Cada resultado é salvo antes do próximo canal; uma falha não interrompe os demais.
+      for (const item of state.channels) await apply(item, message.type === 'startAll' ? start : stop);
     } else if (message.type !== 'status') throw new Error('Comando desconhecido.');
-    await api.storage.local.set(state);
-    return state;
+    await save();
+    return { ...state, warnings };
   };
 }

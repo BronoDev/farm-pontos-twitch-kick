@@ -36,6 +36,14 @@ Entre na Twitch/Kick **no próprio Opera GX**: o login de outro navegador não �
 
 ## Depois de instalar
 
-Entre na Twitch/Kick no mesmo navegador. Abra **Chat Leve** pelo menu de extensões, adicione um canal (por exemplo `https://kick.com/yetz`) e clique em **Abrir chat**. Não é necessário instalar Node, Python ou executar comandos para usar.
+Entre na Twitch/Kick no mesmo navegador. Abra **Chat Leve** pelo menu de extensões, adicione um canal (por exemplo `https://kick.com/yetz`) e clique em **Iniciar** ou **Iniciar todos**. Não é necessário instalar Node, Python ou executar comandos para usar.
 
-O status indica a janela aberta; confira pontos e XP nas plataformas. Detalhes em [README.md](README.md).
+Os chats são abas silenciosas em segundo plano, sem novas janelas de pop-up. **Fechar todos** encerra as abas gerenciadas e conserva sua lista para abrir novamente. As abas continuam visíveis na barra do navegador; este modo não cria chats completamente invisíveis.
+
+O status indica a aba aberta; confira pontos e XP nas plataformas. Detalhes em [README.md](README.md).
+
+## Atualizar uma instalação existente
+
+Baixe o novo pacote do seu navegador e extraia em uma pasta fixa. No Opera GX/Chrome/Edge, substitua os arquivos da pasta que você já carregou e clique em **Recarregar** no cartão da extensão. Isso mantém o caminho e permite preservar os canais. No Firefox, use **Recarregar** em `about:debugging` enquanto a instalação temporária existir; após encerrar o navegador, carregue o manifesto novamente.
+
+Se ainda houver pop-ups da versão anterior, clique em **Fechar todos** e depois em **Iniciar todos**. Não remova a extensão antes de atualizar, para evitar apagar seus dados locais.

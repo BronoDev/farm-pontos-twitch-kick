@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Chat Leve — Twitch e Kick",
-  "description": "Organize canais e abra somente seus pop-ups de chat, sem player de vídeo.",
-  "version": "0.2.0",
+  "description": "Gerencie chats em abas silenciosas de segundo plano, sem player de vídeo.",
+  "version": "0.3.0",
   "minimum_chrome_version": "109",
   "permissions": ["storage", "tabs"],
   "background": { "service_worker": "background.js", "type": "module" },
