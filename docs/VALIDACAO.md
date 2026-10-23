@@ -57,3 +57,14 @@ A versão 0.3 usa `tabs.create({active: false})` e silencia a aba com `tabs.upda
 - A página Kick/yetz e a consulta pública de canal retornaram bloqueio 403 do proxy. O menu real da Kick, autoplay autenticado, variantes de live, consumo de recursos e pontos **não foram validados**.
 
 Os scripts de conteúdo usam somente controles DOM e propriedades do elemento de vídeo em abas gerenciadas. Não há redução de resolução por CSS, download direto de playlists ou alteração de APIs privadas. Selecionar 160p em uma fixture não prova que esse controle existe ou funciona no site atual da Kick. Confira `docs/KICK-VIDEO.md` para a validação manual.
+
+## Preparação Android (0.5)
+
+- 23 testes de Node passaram. Incluem o manifesto Android com seus scripts clássicos, comandos do painel em uma aba da extensão, rejeição dos mesmos comandos vindos de uma página web e criação de abas já silenciadas sem chamar o `tabs.update` incompatível com Android.
+- O pacote `instalar/firefox-android` passou no `web-ext` 10.8.0 com zero erros, avisos ou observações.
+- `python3 scripts/test-mobile-ui.py` passou em viewports de 320, 360, 412 e 560 pixels, com toque/identificação Android e APIs simuladas no Chromium. Verificou cadastro, iniciar/fechar/reabrir todos, ausência de rolagem horizontal, controles com pelo menos 44 pixels de altura nas telas pequenas e ausência de erros JavaScript. Isso não é emulação do motor ou do sistema Android.
+- `python3 scripts/test-player.py` passou novamente, incluindo o atributo `playsinline` no vídeo simulado.
+- Foram consultados os dados oficiais MDN de `tabs.create`, `tabs.update` e `browser_specific_settings`, o guia da Mozilla e a ajuda `web-ext run --help` para as diferenças de API e o fluxo de teste por USB.
+- **Não executado:** instalação em Firefox Android, conexão ADB, navegador nativo móvel, execução com tela bloqueada, qualidade no player móvel real, assinatura Mozilla e concessão de pontos. O ambiente não tem `adb`, emulador ou dispositivo Android conectado. O comando de desenvolvimento está documentado em [ANDROID.md](ANDROID.md), mas não foi validado contra um aparelho.
+
+Não considere o pacote pronto para instalação comum no Android enquanto faltar assinatura/distribuição Mozilla e validação nativa. Os testes existentes não substituem esses passos.

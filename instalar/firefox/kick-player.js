@@ -40,6 +40,8 @@
     targetHeight = 0;
     qualityStatus = 'pending';
     video.muted = true;
+    video.playsInline = true;
+    video.setAttribute('playsinline', '');
     for (const event of ['playing', 'pause', 'waiting', 'ended', 'error', 'loadedmetadata', 'resize']) {
       const handler = () => {
         if (event === 'playing' && qualityStatus === 'autoplay-blocked') qualityStatus = targetHeight ? 'requested' : 'pending';

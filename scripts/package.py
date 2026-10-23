@@ -6,7 +6,7 @@ import zipfile
 
 root = Path(__file__).resolve().parent.parent
 checking = '--check' in sys.argv
-for browser in ('firefox', 'chromium', 'opera-gx'):
+for browser in ('firefox', 'chromium', 'opera-gx', 'firefox-android'):
     output = BytesIO()
     with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as archive:
         for source in sorted((root / 'instalar' / browser).iterdir()):

@@ -48,6 +48,7 @@ with sync_playwright() as p:
     page.wait_for_function('samples.some(s=>s.targetHeight===160 && s.height===160 && s.playing)')
     assert page.evaluate('chosen') == 160
     assert page.evaluate('document.querySelector("video").muted')
+    assert page.evaluate('document.querySelector("video").playsInline')
     assert page.evaluate('playCalls') == 1
     page.close()
 

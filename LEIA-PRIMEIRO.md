@@ -1,5 +1,11 @@
 # Comece por aqui
 
+## Android — Firefox 142+ (desenvolvimento)
+
+O pacote móvel fica em **instalar/firefox-android**. O painel foi adaptado para toque e telas pequenas. **Ainda não há versão assinada para instalar normalmente no celular**; o teste temporário requer um computador e conexão USB com Firefox Android/Nightly. Veja [o guia Android](docs/ANDROID.md) antes de baixar.
+
+Opera GX/Chrome para Android não carregam este pacote como as versões de PC. As instruções de `opera://extensions`, `chrome://extensions` e `about:debugging` abaixo são para **desktop**.
+
 ## Firefox 142 ou mais recente
 
 1. Baixe e extraia [o pacote Firefox](https://github.com/BronoDev/farm-pontos-twitch-kick/raw/refs/heads/main/downloads/chat-leve-firefox.zip).

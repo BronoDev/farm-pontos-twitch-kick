@@ -255,3 +255,21 @@ test('dados inválidos do player não viram resolução ou sucesso falsos', asyn
   assert.equal(playback.targetHeight, 0);
   assert.equal(playback.qualityStatus, 'pending');
 });
+
+test('Firefox Android cria abas silenciadas sem usar tabs.update muted não suportado', async () => {
+  const b = browser(true);
+  b.api.runtime = {
+    getBrowserInfo: async () => ({ name: 'Firefox' }),
+    getPlatformInfo: async () => ({ os: 'android' })
+  };
+  b.api.tabs.update = async () => assert.fail('tabs.update não deve ser usado para silenciar no Android');
+  await b.run({ type: 'add', platform: 'kick', input: 'yetz' });
+  await b.run({ type: 'add', platform: 'twitch', input: 'outro' });
+  const state = await b.run({ type: 'startAll' });
+  assert.equal(state.warnings.length, 0);
+  assert.equal(b.opened.length, 2);
+  assert.ok(b.opened.every(options => options.muted === true && options.active === false));
+  assert.equal(b.opened[0].url, 'https://kick.com/yetz');
+  await b.run({ type: 'stopAll' });
+  assert.equal(b.tabs.size, 0);
+});

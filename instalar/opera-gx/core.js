@@ -40,6 +40,16 @@ function matchesSession(url, item, session) {
 }
 
 export function createController(api) {
+  let androidGecko;
+  async function isAndroidGecko() {
+    if (!androidGecko) androidGecko = (async () => {
+      // Firefox Android aceita muted em tabs.create, mas não em tabs.update.
+      if (!api.runtime?.getBrowserInfo || !api.runtime?.getPlatformInfo) return false;
+      try { return (await api.runtime.getPlatformInfo()).os === 'android'; }
+      catch { return false; }
+    })();
+    return androidGecko;
+  }
   async function read() {
     const { channels = [], sessions = {}, kickLive = true } = await api.storage.local.get(['channels', 'sessions', 'kickLive']);
     return { channels, sessions, kickLive };
@@ -92,13 +102,18 @@ export function createController(api) {
       if (existing?.mode === 'background' && (existing.media || 'chat') === media) return;
       // Migra os pop-ups das versões anteriores quando o usuário inicia o canal.
       if (existing) await stop(item);
-      const tab = await api.tabs.create({ url: sessionUrl(item, { media }), active: false });
+      const mutedOnCreate = await isAndroidGecko();
+      const options = { url: sessionUrl(item, { media }), active: false };
+      if (mutedOnCreate) options.muted = true;
+      const tab = await api.tabs.create(options);
       if (!Number.isInteger(tab?.id)) throw new Error('O navegador não retornou a aba do chat.');
       // Salva imediatamente: mesmo uma falha posterior pode ser encerrada pelo painel.
       state.sessions[item.id] = { tabId: tab.id, openedAt: Date.now(), mode: 'background', media };
       await save();
-      try { await api.tabs.update(tab.id, { muted: true }); }
-      catch { warnings.push(`${item.name}: não foi possível silenciar a aba. Verifique o áudio no navegador.`); }
+      if (!mutedOnCreate) {
+        try { await api.tabs.update(tab.id, { muted: true }); }
+        catch { warnings.push(`${item.name}: não foi possível silenciar a aba. Verifique o áudio no navegador.`); }
+      }
     }
     async function apply(item, operation) {
       try { await operation(item); }

@@ -1,0 +1,54 @@
+{
+  "manifest_version": 2,
+  "name": "Chat Leve — Twitch e Kick",
+  "description": "Twitch em chat e Kick com vídeo na menor qualidade disponível, em segundo plano.",
+  "version": "0.5.0",
+  "permissions": [
+    "storage",
+    "tabs",
+    "https://kick.com/*",
+    "https://www.kick.com/*"
+  ],
+  "background": {
+    "scripts": [
+      "core.js",
+      "background.js"
+    ],
+    "persistent": false
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "chat-leve@bronodev.github.io",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://kick.com/*",
+        "https://www.kick.com/*"
+      ],
+      "js": [
+        "kick-quality.js",
+        "kick-player.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_ui": {
+    "page": "popup.html",
+    "open_in_tab": true
+  },
+  "browser_action": {
+    "default_title": "Chat Leve",
+    "default_popup": "popup.html"
+  }
+}

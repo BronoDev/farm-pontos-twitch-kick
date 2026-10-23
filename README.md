@@ -12,6 +12,8 @@ Extensão local para Firefox, Chrome, Edge e Opera GX. Abre a **live oficial da 
 | Chrome/Edge | [chat-leve-chromium.zip](https://github.com/BronoDev/farm-pontos-twitch-kick/raw/refs/heads/main/downloads/chat-leve-chromium.zip) | `instalar/chromium/` |
 | Opera GX | [chat-leve-opera-gx.zip](https://github.com/BronoDev/farm-pontos-twitch-kick/raw/refs/heads/main/downloads/chat-leve-opera-gx.zip) | `instalar/opera-gx/` |
 
+**Android:** há um pacote separado preparado para Firefox Android 142+, com painel responsivo e APIs adaptadas. Ainda não é uma instalação comum pelo celular: falta assinatura Mozilla e validação em aparelho real. O teste temporário exige computador + USB. Leia [docs/ANDROID.md](docs/ANDROID.md). Opera GX/Chrome no Android não usam o modo de desenvolvedor das versões desktop para carregar este projeto.
+
 **Firefox:** extraia o pacote, abra `about:debugging#/runtime/this-firefox`, escolha **Carregar extensão temporária…** e selecione `manifest.json`. Não instale o ZIP como extensão permanente: o pacote não tem assinatura da Mozilla. O Firefox pode mostrar “danificado” ao tentar essa instalação. A versão original também usava um service worker específico de Chromium; agora há um pacote separado com scripts de segundo plano compatíveis com Firefox. Uma mensagem genérica de erro não permite determinar qual dessas causas ocorreu no seu computador.
 
 O carregamento temporário termina quando o Firefox é encerrado e não garante retenção dos dados locais entre carregamentos. Para instalar permanentemente, ainda será necessária a assinatura pela Mozilla (AMO, listado ou não listado). Isso exige a conta do mantenedor; não há `.xpi` assinado disponível. Não desative a verificação de assinatura.
@@ -43,6 +45,8 @@ instalar/
   chromium/             → pasta pronta para Chrome/Edge
     manifest.json
   opera-gx/             → pasta pronta para Opera GX
+    manifest.json
+  firefox-android/      → pacote de desenvolvimento Firefox Android
     manifest.json
 downloads/              → ZIPs de cada navegador, com manifest.json na raiz
 src/                    → código compartilhado; edite aqui
@@ -95,6 +99,8 @@ npm test
 ```
 
 A geração é determinística e não altera o código-fonte. Não edite manualmente os arquivos de `instalar/`. No Firefox, o gerador converte o núcleo compartilhado em script clássico e o manifesto carrega esse script antes de `background.js`. No Chromium, o mesmo núcleo é importado pelo service worker como módulo.
+
+O alvo Android usa manifesto próprio e abas criadas já silenciadas, pois `tabs.update` não oferece a opção `muted` no Firefox Android. Para teste de desenvolvimento por USB, veja `npm run android:run` e os pré-requisitos em [docs/ANDROID.md](docs/ANDROID.md). A página de opções permite usar o painel em uma aba inteira.
 
 Os testes usam APIs de navegador simuladas; não validam pontos, login ou conexões aos serviços. Consulte [as verificações e limitações](docs/VALIDACAO.md).
 

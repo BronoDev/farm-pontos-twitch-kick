@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Chat Leve — Twitch e Kick",
   "description": "Twitch em chat e Kick com vídeo na menor qualidade disponível, em segundo plano.",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "minimum_chrome_version": "109",
   "permissions": [
     "storage",
@@ -32,5 +32,9 @@
       ],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "options_ui": {
+    "page": "popup.html",
+    "open_in_tab": true
+  }
 }

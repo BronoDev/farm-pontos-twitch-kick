@@ -5,7 +5,7 @@ import path from 'node:path';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const checking = process.argv.includes('--check');
 const assets = ['core.js', 'background.js', 'popup.js', 'popup.html', 'popup.css', 'kick-quality.js', 'kick-player.js'];
-const browsers = ['firefox', 'chromium', 'opera-gx'];
+const browsers = ['firefox', 'chromium', 'opera-gx', 'firefox-android'];
 
 export async function expectedFiles(browser) {
   const files = new Map();
@@ -13,9 +13,9 @@ export async function expectedFiles(browser) {
   files.set('manifest.json', await readFile(path.join(root, 'manifests', `${manifest}.json`), 'utf8'));
   for (const file of assets) {
     let source = await readFile(path.join(root, 'src', file), 'utf8');
-    if (browser === 'firefox' && file === 'core.js') source = source.replace(/^export /gm, '');
+    if (browser.startsWith('firefox') && file === 'core.js') source = source.replace(/^export /gm, '');
     if (file === 'kick-quality.js') source = source.replace(/^export /gm, '');
-    if (browser === 'firefox' && file === 'background.js') source = source.replace(/^import \{ createController \} from '\.\/core\.js';\n/, '');
+    if (browser.startsWith('firefox') && file === 'background.js') source = source.replace(/^import \{ createController \} from '\.\/core\.js';\n/, '');
     files.set(file, source);
   }
   return files;

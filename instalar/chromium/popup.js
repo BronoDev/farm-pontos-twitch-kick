@@ -1,6 +1,7 @@
 const list = document.querySelector('#channels');
 const errorBox = document.querySelector('#error');
 const api = globalThis.browser ?? globalThis.chrome;
+document.querySelector('#android-note').hidden = !/Android/i.test(navigator.userAgent);
 let busy = false;
 
 function render(state) {
