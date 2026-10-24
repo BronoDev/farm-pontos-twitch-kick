@@ -68,12 +68,14 @@
     </div></details>
 
     <details id="schedule-panel" hidden><summary>Automação de lives</summary><div class="panel-body">
-      <p class="hint">Escolha os canais. Quando entram ao vivo, a Kick abre uma aba e a Twitch conecta o chat em segundo plano. Ao saírem do ar, suas sessões automáticas são encerradas.</p>
+      <p class="hint">A Kick abre a live quando o canal entra ao vivo e fecha sua sessão automática ao sair do ar. Na Twitch, mantenha só o popout de chat em segundo plano, sem player.</p>
       <p id="watch-status" class="hint" role="status"></p>
       <p id="legacy-schedules-note" class="notice compact" hidden></p>
       <form id="watch-form" class="stacked-form">
         <label class="check-option"><input id="watch-enabled" type="checkbox"><span>Monitorar lives automaticamente</span></label>
         <fieldset><legend>Canais para acompanhar</legend><div id="watch-channels" class="channel-checks"></div></fieldset>
+        <label id="watch-twitch-mode-option" hidden>Chat Twitch<select id="watch-twitch-mode"><option value="chat">Popout de chat em segundo plano</option><option value="irc">Sem abas — conexão avançada</option></select></label>
+        <p id="watch-twitch-note" class="hint" hidden></p>
         <div class="actions"><button type="submit">Salvar automação</button><button id="watch-now" type="button" class="secondary" hidden>Verificar agora</button></div>
       </form>
       <details id="twitch-chat-settings" class="inline-options" hidden><summary>Conectar chat Twitch sem abas</summary><div class="panel-body">
@@ -91,21 +93,23 @@
       </div>
       <div class="side-column">
         <section id="pokeidle-panel" class="panel pokeidle-panel" aria-labelledby="pokeidle-heading" hidden>
-          <div class="panel-heading"><div><span class="eyebrow">INTEGRAÇÃO TWITCH</span><h2 id="pokeidle-heading">PokeIdle</h2></div><span id="pokeidle-connection" class="tag">Não conectado</span></div>
-          <div id="pokeidle-setup"><h3>Conecte sua lista de canais</h3><p>Abra o jogo e carregue a lista de canais oficiais para configurar as lives automáticas.</p></div>
+          <div class="panel-heading"><div><span class="eyebrow">TWITCH + KICK DO JOGO</span><h2 id="pokeidle-heading">PokeIdle</h2></div><span id="pokeidle-connection" class="tag">Não conectado</span></div>
+          <div id="pokeidle-setup"><h3>Conecte os canais do jogo</h3><p>Abra o PokeIdle e carregue seus canais. A Twitch usa só chat; a Kick pode abrir a live na menor qualidade disponível.</p></div>
           <button id="open-pokeidle" class="secondary connect-button" type="button">Abrir PokeIdle <span aria-hidden="true">↗</span></button>
           <div id="pokeidle-configured" hidden>
-            <label class="check-option"><input id="pokeidle-enabled" type="checkbox" checked><span>Automatizar Twitch do PokeIdle</span></label>
-            <div class="pokeidle-metrics" aria-label="Última lista do PokeIdle"><div><strong id="pokeidle-official-count">0</strong><span>Oficiais</span></div><div><strong id="pokeidle-live-bonus-count">0</strong><span>Ao vivo com bônus</span></div><div><strong id="pokeidle-missing-count">0</strong><span>Faltantes</span></div></div>
+            <label class="check-option"><input id="pokeidle-enabled" type="checkbox" checked><span>Automatizar canais do PokeIdle</span></label>
+            <p class="hint">Twitch: só o popout de chat, sem vídeo. Kick: live silenciosa na menor qualidade disponível. Links sem status aguardam uma consulta à Kick.</p>
+            <p class="hint"><strong id="pokeidle-twitch-count">0</strong> Twitch · <strong id="pokeidle-kick-count">0</strong> Kick encontrados na página</p>
+            <div class="pokeidle-metrics" aria-label="Última lista do PokeIdle"><div><strong id="pokeidle-official-count">0</strong><span>Canais na página</span></div><div><strong id="pokeidle-live-bonus-count">0</strong><span>Twitch ao vivo com bônus</span></div><div><strong id="pokeidle-missing-count">0</strong><span>Twitch faltantes</span></div></div>
             <p id="pokeidle-sessions" class="hint"></p>
             <p id="pokeidle-waiting" class="notice compact" hidden></p>
             <p id="pokeidle-error" class="hint" hidden></p>
             <button id="refresh-pokeidle" class="secondary" type="button">Sincronizar agora</button>
             <details class="source-details"><summary>Regras e origem</summary><div class="panel-body"><p id="pokeidle-status" role="status" class="hint"></p><div class="pokeidle-rule"><span class="eyebrow">REGRA EXIBIDA PELO JOGO</span><p id="pokeidle-rule-text">Ainda sem regra recebida.</p><p class="hint">Os sinais da página não confirmam XP creditado. Confira o saldo no jogo.</p></div></div></details>
-            <details id="pokeidle-list-panel"><summary>Ver canais da origem</summary><div class="panel-body"><label>Mostrar<select id="pokeidle-filter"><option value="all">Todos os canais</option><option value="eligible">Ao vivo, com bônus e faltantes</option><option value="live-bonus">Ao vivo com bônus</option><option value="missing">Marcados faltantes</option></select></label><div id="pokeidle-channels"></div></div></details>
+            <details id="pokeidle-list-panel"><summary>Ver canais da origem</summary><div class="panel-body"><label>Mostrar<select id="pokeidle-filter"><option value="all">Todos os canais</option><option value="kick">Kick</option><option value="twitch">Twitch</option><option value="eligible">Elegíveis na última leitura</option><option value="live-bonus">Ao vivo com bônus</option><option value="missing">Marcados faltantes</option></select></label><div id="pokeidle-channels"></div></div></details>
           </div>
         </section>
-        <details id="personalization-panel"><summary>Personalizar painel</summary><div class="panel-body"><p class="hint">Escolha as ferramentas que quer ver.</p><label class="feature-option"><input id="show-pokeidle" type="checkbox"><span><strong>Integração PokeIdle</strong><span>Conecte a lista oficial da Twitch.</span></span></label><label class="feature-option"><input id="show-bonuses" type="checkbox"><span><strong>Bônus e resgates</strong><span>Cadastre requisitos e acompanhe resgates.</span></span></label><label class="feature-option"><input id="show-history" type="checkbox"><span><strong>Histórico de XP e pontos</strong><span>Registre saldos para comparar ganhos.</span></span></label><label class="feature-option"><input id="show-schedule" type="checkbox"><span><strong>Automação de lives</strong><span>Acompanhe quando os canais entram e saem do ar.</span></span></label><p class="hint">Ocultar conserva seus dados e não desativa automações.</p></div></details>
+        <details id="personalization-panel"><summary>Personalizar painel</summary><div class="panel-body"><p class="hint">Escolha as ferramentas que quer ver.</p><label class="feature-option"><input id="show-pokeidle" type="checkbox"><span><strong>Integração PokeIdle</strong><span>Conecte os canais Twitch e Kick do jogo.</span></span></label><label class="feature-option"><input id="show-bonuses" type="checkbox"><span><strong>Bônus e resgates</strong><span>Cadastre requisitos e acompanhe resgates.</span></span></label><label class="feature-option"><input id="show-history" type="checkbox"><span><strong>Histórico de XP e pontos</strong><span>Registre saldos para comparar ganhos.</span></span></label><label class="feature-option"><input id="show-schedule" type="checkbox"><span><strong>Automação de lives</strong><span>Acompanhe quando os canais entram e saem do ar.</span></span></label><p class="hint">Ocultar conserva seus dados e não desativa automações.</p></div></details>
     <details id="settings-panel"><summary>Limites de consumo e recuperação</summary><div class="panel-body">
       <p class="hint">A fila respeita os limites e a prioridade de cada canal. Salvar limites também ajusta as sessões abertas; os canais excedentes voltam para a fila. O uso de CPU e memória depende das páginas e não é medido pela extensão.</p>
       <details id="kick-options" class="inline-options" hidden><summary>Padrão da Kick</summary><div class="panel-body"><label class="check-option"><input id="kick-live" type="checkbox" checked><span>Usar live na menor qualidade como padrão</span></label><p class="hint">Vale para canais no modo Padrão da Kick. As escolhas individuais de live ou chat são preservadas.</p></div></details>

@@ -5,6 +5,7 @@ from playwright.sync_api import sync_playwright
 root = Path(__file__).resolve().parent.parent
 source = (root / 'src' / 'pokeidle.js').read_text().replace('export ', '')
 html = (root / 'tests' / 'fixtures' / 'pokeidle-twitch.html').read_text()
+mixed_html = (root / 'tests' / 'fixtures' / 'pokeidle-mixed-synthetic.html').read_text()
 live_names = {'tftoddy', 'axtlol', 'clovaobengala', 'patopapao', 'matta', 'rodil', 'faturetosl', 'guaxilol1'}
 offline_names = {'faasii', 'biscoitao', 'cogu', 'luccatv', 'techzz', 'dersin2k', 'denissnidertv', 'mecmeno'}
 
@@ -48,6 +49,7 @@ with sync_playwright() as p:
     assert {item['name'] for item in snapshot['channels'] if item['live']} == live_names
     assert {item['name'] for item in snapshot['channels'] if not item['live']} == offline_names
     assert all(item['bonus'] for item in snapshot['channels'])
+    assert all(item['platform'] == 'twitch' and item['source'] == 'widget' for item in snapshot['channels'])
     assert {item['name'] for item in snapshot['channels'] if item['missing']} == live_names
     assert '+15%' in snapshot['ruleText'] and '+2,5%' in snapshot['ruleText']
     assert '/mod ' not in snapshot['ruleText']
@@ -107,6 +109,57 @@ with sync_playwright() as p:
     assert page.evaluate('snapshots.length') == 4
     page.close()
 
+    # Fixture mista sintética: plataforma explícita e links Kick sem status inventado.
+    page = fixture(context, body=mixed_html)
+    page.wait_for_function('snapshots.length===1')
+    snapshot = page.evaluate('snapshots[0]')
+    channels = {item['platform'] + ':' + item['name']: item for item in snapshot['channels']}
+    assert set(channels) == {'twitch:tftoddy', 'kick:yetz', 'kick:outro_canal-123'}
+    assert channels['kick:yetz']['source'] == 'widget' and channels['kick:yetz']['live'] is True
+    assert channels['kick:outro_canal-123'] == {
+        'platform': 'kick', 'name': 'outro_canal-123', 'displayName': 'outro_canal-123',
+        'live': None, 'bonus': False, 'missing': False, 'source': 'link'
+    }
+    assert snapshot['ruleText'] == '+15% na primeira live e +2,5% nas demais'
+    assert page.evaluate('JSON.stringify(readPokeIdleChannels(document))===JSON.stringify(readPokeIdleTwitch(document))')
+    # O observer é local ao container Kick e nota uma mudança real do link.
+    page.evaluate('document.querySelector(".kick-canais a").href="https://kick.com/novo_canal"')
+    page.wait_for_function('snapshots.length===2')
+    assert page.evaluate('snapshots.at(-1).channels.some(item=>item.platform==="kick" && item.name==="novo_canal" && item.live===null)')
+    page.evaluate('''() => {
+      const link=document.createElement('a');link.href='https://kick.com/mais_um';
+      document.querySelector('.kick-canais').append(link);
+    }''')
+    page.wait_for_function('snapshots.length===3')
+    assert page.evaluate('snapshots.at(-1).channels.some(item=>item.name==="mais_um" && item.live===null)')
+    page.evaluate('document.querySelector(".kick-canais a").href="https://evil.test/novo_canal"')
+    page.wait_for_function('snapshots.length===4')
+    assert not page.evaluate('snapshots.at(-1).channels.some(item=>item.name==="novo_canal")')
+    page.close()
+
+    # Link Kick em SPA sem widget conhecido também é encontrado na descoberta inicial.
+    page = fixture(context, body='<main id="game"></main>')
+    page.evaluate('''() => {
+      const link=document.createElement('a');link.href='https://kick.com/yetz';
+      link.className='ao-vivo com-bonus';document.querySelector('#game').append(link);
+    }''')
+    page.wait_for_function('snapshots.length===1')
+    assert page.evaluate('snapshots[0].channels[0].live') is None
+    assert page.evaluate('snapshots[0].channels[0].bonus') is False
+    page.close()
+
+    # Após encontrar o widget, não observamos o jogo inteiro permanentemente.
+    # Links externos ao widget são redescobertos pelo heartbeat/foco.
+    page = fixture(context)
+    page.wait_for_function('snapshots.length===1')
+    page.evaluate('''() => {
+      const link=document.createElement('a');link.href='https://kick.com/yetz';document.body.append(link);
+      intervals[0].callback();
+    }''')
+    page.wait_for_function('snapshots.length===2')
+    assert page.evaluate('snapshots.at(-1).channels.some(item=>item.platform==="kick" && item.name==="yetz" && item.source==="link" && item.live===null)')
+    page.close()
+
     # Widget renderizado depois do script numa SPA é encontrado sem recarregar.
     page = fixture(context, body='<main id="game"></main>')
     page.wait_for_timeout(50)
@@ -144,4 +197,4 @@ with sync_playwright() as p:
         page.close()
     assert not errors, errors
     browser.close()
-    print('PASS: fixture real 16 canais/8 lives, leitura por classes, SPA, debounce/throttle, refresh autenticado, heartbeat, loading e cleanup. Chromium local; sem contas ou cliques.')
+    print('PASS: fixture real Twitch16/8 e fixture mista sintética; Kick por URL sem inventar live/bônus, observers locais/SPA/heartbeat, debounce/throttle, refresh, loading e cleanup. Chromium local; sem contas ou cliques.')

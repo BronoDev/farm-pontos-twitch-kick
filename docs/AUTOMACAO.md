@@ -1,56 +1,52 @@
-# Automação pelo estado das lives
+# Automação dos canais
 
-A automação de lives substitui o cadastro de horários no painel da versão 0.9. Você escolhe os canais, e a extensão consulta seus estados enquanto o navegador estiver disponível. Não é necessário prever o horário de início ou manter a página PokeIdle aberta para esse modo.
+Na versão 0.10, a Twitch usa somente chat. O padrão abre o popout oficial do chat numa aba inativa e silenciosa, usando a sessão da Twitch deste navegador. A Kick pode abrir a live com tentativa de menor qualidade disponível. A extensão não cria janelas de pop-up para essas sessões.
 
 ## Configurar
 
-1. Adicione os canais Twitch e Kick que quer acompanhar. Para cada canal Kick, escolha se deseja abrir a live com tentativa de menor qualidade ou apenas o chat.
+1. Adicione seus canais ou carregue a lista do PokeIdle. A integração pode identificar canais das duas plataformas.
 2. Em **Personalizar painel**, mostre **Automação de lives**.
-3. Selecione os canais, habilite a automação e clique em **Salvar automação**. O modo começa desativado em uma instalação nova.
-4. Confira o último estado recebido e seu horário. Um estado desconhecido não é interpretado como offline.
-5. Para a Twitch sem aba, conecte sua conta conforme a seção abaixo. Esse modo usa o chat oficial, sem player ou janela da Twitch.
+3. Escolha os canais, ative o monitoramento e clique em **Salvar automação**.
+4. Na Twitch, mantenha o modo de popout de chat para usar a sessão do navegador. Na Kick, escolha o modo da live para os canais que precisam de vídeo.
+5. Confira a última consulta e as sessões abertas. As verificações periódicas dependem do navegador em execução.
 
-Um canal confirmado ao vivo pode iniciar uma sessão conforme suas escolhas e limites. Um novo sinal explícito de offline encerra somente a participação dessa automação; uma sessão que também foi iniciada manualmente é preservada. Respostas de erro, bloqueio, limite de requisições ou conteúdo inválido deixam o estado desconhecido: não abrem novas sessões e não fecham as existentes por presumir offline.
+No modo padrão, o chat Twitch continua aberto enquanto o canal estiver selecionado e a automação estiver habilitada. Ele não precisa de um player nem de uma consulta autenticada ao estado da live. Uma transmissão offline pode continuar tendo chat disponível.
 
-**Fechar todos** fecha as sessões gerenciadas, encerra os chats gerenciados e pausa a automação. Uma nova consulta não desfaz essa pausa. Iniciar um canal individualmente não retoma todos os outros.
+A Kick inicia quando há um sinal confirmado de live e encerra somente a participação automática após offline explícito. Uma sessão que também foi iniciada manualmente é preservada. Erros de API, bloqueios, limites de requisições e respostas inválidas deixam o estado desconhecido; não abrem novos canais e não fecham os existentes por presumir offline.
 
-Enquanto a automação está pausada, as consultas periódicas de estado também param. Retomar permite consultar os canais novamente. **Verificar agora** solicita uma consulta manual mesmo durante a pausa, sem autorizar reabertura das sessões.
+## Abas em segundo plano
 
-## Twitch sem aba
+O popout de chat é um endereço oficial, aberto numa aba sem receber foco. A aba continua visível na barra do navegador; isso não equivale a uma janela ou página completamente invisível. Fechar o painel da extensão não encerra suas sessões.
 
-O modo de chat conecta sua própria conta ao IRC oficial da Twitch por WebSocket. Para isso, a extensão precisa de um token de acesso de usuário com a permissão `chat:read`.
+Os chats em abas usam o limite global de abas. Vídeos Kick também respeitam o limite específico de vídeos. **Fechar todos** encerra as sessões gerenciadas e pausa as consultas periódicas. **Verificar agora** pode consultar manualmente sem desfazer a pausa. Fechar um canal individualmente impede sua reabertura automática até uma retomada explícita.
 
-1. Use o fluxo OAuth oficial de um aplicativo Twitch registrado por você. Consulte a [documentação de autenticação da Twitch](https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/) e solicite somente o escopo `chat:read` para essa função.
-2. Insira o token no campo de senha da conexão Twitch, dentro da extensão. Não envie o token no chat, em arquivos do projeto ou em comentários do GitHub. O aplicativo não precisa do segredo do cliente OAuth.
-3. A extensão consulta o endpoint oficial de validação para obter a conta, o aplicativo emissor e as permissões. O identificador do cliente é lido dessa resposta; não é necessário digitá-lo separadamente.
-4. Confira os estados de autenticação, conexão e entrada no canal. Uma conexão aberta não é apresentada como entrada confirmada antes da resposta do servidor.
+## Twitch sem nenhuma aba: opção avançada
 
-O token fica no armazenamento local da extensão e não é devolvido como parte do estado público do painel. Ele é usado apenas com os serviços oficiais de autenticação, estado das transmissões e chat da Twitch. Não há sincronização da credencial com um servidor próprio. Você pode remover a conexão no painel e revogar a autorização na Twitch quando quiser.
+O modo IRC é opcional. Escolha-o somente se quiser conectar o chat sem sequer manter uma aba de popout. Ele usa uma conexão oficial WebSocket da própria conta e precisa de um token de usuário com a permissão `chat:read`.
 
-O cliente usa autenticação e comandos de entrada/saída e manutenção da conexão. Não envia mensagens de chat para fingir atividade. Um token expirado, revogado ou sem a permissão necessária exige reconectar com uma credencial válida.
+1. Use o fluxo OAuth oficial de um aplicativo Twitch registrado por você. Consulte a [documentação de autenticação da Twitch](https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/).
+2. Insira o token somente no campo de conexão da extensão. Não é a senha da sua conta. Não envie a credencial no chat, em arquivos do projeto ou em comentários do GitHub.
+3. A validação oficial identifica a conta, o aplicativo emissor e as permissões; não é necessário digitar o identificador do cliente separadamente.
+4. Confira autenticação, conexão e entrada no canal. A entrada só é apresentada como confirmada após a resposta do servidor.
 
-Entrar no chat não equivale a assistir ao vídeo. Não há confirmação de que a Twitch concederá pontos de canal, nem de que um bot externo concederá XP por essa conexão. Confira as regras e o saldo no serviço correspondente.
+O token fica no armazenamento local da extensão, separado do estado público do painel. Não há servidor próprio para sincronizar a credencial. Remova a conexão no painel ou revogue a autorização na Twitch quando quiser. O cliente não envia mensagens de chat para fingir atividade. Expiração ou revogação exige uma credencial válida para reconectar.
 
-## Kick e qualidade do vídeo
+O IRC não ocupa uma aba nem consome o limite de abas. O popout padrão não precisa dessa configuração OAuth.
 
-O estado de um canal Kick é consultado no serviço da própria Kick. Quando o canal selecionado está ao vivo, a automação segue o modo escolhido para ele. **Live na menor qualidade** usa a página oficial com vídeo silencioso e tenta a menor variante numérica oferecida; **Só chat** usa apenas o chat. O padrão geral vale somente para os canais que o seguem.
+## Canais encontrados no PokeIdle
 
-As lives Kick continuam usando abas do navegador e recursos de vídeo. A extensão não cria uma resolução menor que a oferecida pelo canal. Login, autoplay e qualidade podem exigir abrir a aba uma vez. Consulte [KICK-VIDEO.md](KICK-VIDEO.md).
+Abra o jogo e carregue seus canais. Os links Twitch elegíveis usam somente o chat. Os links Kick são identificados pela plataforma e podem iniciar lives após um sinal confirmado de online. Um link isolado informa o canal, não seu estado atual ou um bônus concedido.
 
-## Atualização de instalações anteriores
+Novos inícios pela integração exigem uma leitura recente da página PokeIdle. As consultas Kick podem confirmar se os canais encontrados estão ao vivo. Se a origem estiver fechada ou desatualizada, não há novos inícios por ela; uma sessão existente não é considerada offline apenas por falta de leitura. Veja [POKEIDLE.md](POKEIDLE.md).
 
-Na primeira leitura da versão 0.9, os horários legados são desativados sem apagar seus registros. Eles não continuam executando ocultos após a atualização, já que a configuração de horários foi substituída no painel.
+## Atualização e limites
 
-Ao habilitar a automação de lives, a extensão também desativa a automação que abria vídeos pelo widget PokeIdle. Esse modo anterior não pode ser reativado enquanto o novo monitoramento estiver habilitado. Isso evita que as duas origens controlem a Twitch de formas concorrentes.
+Sessões Twitch antigas que a extensão ainda gerenciava como live são convertidas para o popout do mesmo canal. Abas pessoais ou já reutilizadas para outro site são preservadas. Os scripts de player são injetados apenas na Kick.
 
-Desligar a automação de lives não reativa os horários nem o modo PokeIdle automaticamente. Os registros anteriores não são apagados. O PokeIdle ainda pode ser usado como fonte de canais e regras, mas sua aba e seu widget não são necessários para o novo monitoramento.
+Os horários legados foram substituídos pelo monitoramento e são desativados na migração, conservando os registros. Desligar uma automação não apaga seus dados nem reativa horários antigos. Ocultar um painel também não interrompe uma automação configurada.
 
-## Navegador e limites práticos
+Se a versão 0.9 desativou a origem PokeIdle ao habilitar o monitoramento, a atualização pode restaurá-la uma vez. Pausas globais e individuais continuam valendo; uma nova escolha de desativar a origem também é preservada.
 
-As consultas usam alarmes do navegador, aproximadamente a cada minuto quando ele está disponível. Não há serviço independente do navegador. Fechá-lo, suspender o computador ou aplicar economia de energia pode atrasar verificações e interromper o chat.
+Fechar ou suspender o navegador pode interromper abas, alarmes e IRC. No Android, trocar de aplicativo ou bloquear a tela também pode suspender essas sessões. O pacote Chromium exige base 116 ou mais recente para a opção avançada de WebSocket; a extensão não mantém o aparelho acordado.
 
-O limite global de abas e o limite de vídeos Kick contam sessões que usam abas. Os canais Twitch conectados por IRC não consomem essas vagas; eles usam a conexão de chat, seus limites de serviço e a seleção configurada.
-
-O pacote Chromium exige versão 116 ou mais recente, incluindo a base usada pelo Opera GX. O WebSocket pode manter o service worker ativo em condições compatíveis, mas não impede suspensão do navegador ou do sistema. No Firefox Android, bloquear a tela ou trocar de aplicativo também pode suspender a conexão; a extensão não mantém o aparelho acordado.
-
-Falhas de API, mudança da estrutura das respostas e limites de acesso podem deixar um canal sem estado conhecido. Novos inícios precisam de um sinal de live recente, com até três minutos. Os horários exibidos ajudam a conferir essa idade. Um player ativo, um sinal de live ou uma entrada no chat não comprova pontos ou XP recebidos. Leia [VALIDACAO.md](VALIDACAO.md) para os testes efetivamente executados e seus limites.
+Chat conectado, vídeo ativo e sinal de live não comprovam pontos ou XP concedidos. Confira as regras e os saldos no serviço correspondente. Os testes e seus limites estão em [VALIDACAO.md](VALIDACAO.md).

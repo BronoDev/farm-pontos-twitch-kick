@@ -95,6 +95,8 @@ def run_size(browser, origin, width, height):
     assert set(active) == {'kick:kick_chat', 'kick:kick_live', 'twitch:twitch_chat'}, active
     assert active['kick:kick_chat']['media'] == 'chat'
     assert active['kick:kick_live']['media'] == 'live'
+    assert active['twitch:twitch_chat']['media'] == 'chat'
+    assert page.evaluate("__created().find(tab=>tab.id===__state().sessions['twitch:twitch_chat'].tabId).url") == 'https://www.twitch.tv/popout/twitch_chat/chat?popout='
     assert page.evaluate("__created().find(tab=>tab.id===__state().sessions['kick:kick_live'].tabId).url") == 'https://kick.com/kick_live'
     assert page.evaluate("__created().find(tab=>tab.id===__state().sessions['kick:kick_chat'].tabId).url") == 'https://kick.com/popout/kick_chat/chat'
     assert page.evaluate('__state().queue') == ['kick:kick_wait']

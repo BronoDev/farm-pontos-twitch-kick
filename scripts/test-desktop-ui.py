@@ -190,6 +190,7 @@ def run_size(browser, origin, width, height):
     assert page.locator('#pokeidle-configured').is_visible()
     assert page.locator('#pokeidle-official-count').inner_text() == '16'
     assert len(page.evaluate('__state().channels')) == 18
+    assert page.evaluate("__created().filter(tab=>new URL(tab.url).hostname==='www.twitch.tv').every(tab=>new URL(tab.url).pathname.startsWith('/popout/'))"), 'A lista PokeIdle não deve gerar players Twitch'
     assert page.locator('#channel-toolbar').is_visible()
     no_overflow(page)
     if width <= 480:

@@ -236,8 +236,8 @@ test('sincronizar PokeIdle aguarda a leitura fora da fila e retorna o estado atu
   assert.equal(refreshed.ok, true);
   assert.equal(refreshed.state.pokeidle.observedAt, b.clock.now);
   assert.equal(refreshed.state.pokeidle.channels.length, 1);
-  assert.equal(refreshed.state.sessions['twitch:tftoddy'].media, 'live');
-  assert.equal(b.opened[0].url, 'https://www.twitch.tv/tftoddy');
+  assert.equal(refreshed.state.sessions['twitch:tftoddy'].media, 'chat');
+  assert.equal(b.opened[0].url, 'https://www.twitch.tv/popout/tftoddy/chat?popout=');
   await b.send({ type: 'stopAll' });
   await b.send({ type: 'refreshPokeIdle' });
   assert.equal(b.opened.length, 1, 'Atualização não desfaz Fechar todos');

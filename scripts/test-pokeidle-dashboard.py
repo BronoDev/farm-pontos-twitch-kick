@@ -152,11 +152,12 @@ def run_width(browser, server, width):
     assert '5 canais aguardam' in page.locator('#pokeidle-waiting').inner_text()
     assert 'Limite atual: 3' in page.locator('#pokeidle-waiting').inner_text()
     assert page.locator('#overview').is_hidden(), 'métricas extras não devem ocupar o painel antes da configuração'
-    assert all(session['media'] == 'live' for session in auto_sessions(page))
-    assert page.evaluate("Object.entries(__state().sessions).every(([id,session])=>{const tab=__tabs().find(t=>t.id===session.tabId);return tab.muted===true && tab.active===false && tab.url==='https://www.twitch.tv/'+id.slice(7)})")
+    assert all(session['media'] == 'chat' for session in auto_sessions(page))
+    assert page.evaluate("Object.entries(__state().sessions).every(([id,session])=>{const tab=__tabs().find(t=>t.id===session.tabId);return tab.muted===true && tab.active===false && tab.url==='https://www.twitch.tv/popout/'+id.slice(7)+'/chat?popout='})")
     first_options = page.locator('#channels .row details.channel-options').first
     first_options.locator(':scope > summary').tap()
-    assert 'Twitch com vídeo' in first_options.inner_text()
+    assert 'com vídeo' not in first_options.inner_text()
+    assert 'Chat' in first_options.inner_text()
     first_options.locator(':scope > summary').tap()
 
     before = page.evaluate('__created().length')
@@ -174,7 +175,7 @@ def run_width(browser, server, width):
     first = original[0]
     no_missing = {**snapshot, 'channels': [dict(channel, missing=False) if 'twitch:' + channel['name'] == first['id'] else dict(channel) for channel in snapshot['channels']]}
     ingest(page, no_missing)
-    assert page.evaluate('id=>__state().sessions[id].tabId', first['id']) == first['tabId'], 'a ausência de missing não comprova XP e não deve fechar a live ativa'
+    assert page.evaluate('id=>__state().sessions[id].tabId', first['id']) == first['tabId'], 'a ausência de missing não comprova XP e não deve fechar o chat ativo'
     assert first['tabId'] not in page.evaluate('__removed()')
     offline = {**no_missing, 'channels': [dict(channel, live=False) if 'twitch:' + channel['name'] == first['id'] else dict(channel) for channel in no_missing['channels']]}
     ingest(page, offline)
@@ -233,8 +234,9 @@ def run_width(browser, server, width):
     assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), f'overflow em {width}px'
     assert not errors, errors
     assert page.locator('#error').is_hidden(), page.locator('#error').text_content()
+    assert page.evaluate("__created().filter(tab=>new URL(tab.url).hostname==='www.twitch.tv').every(tab=>new URL(tab.url).pathname.startsWith('/popout/'))"), 'Nenhuma sessão Twitch deve abrir a página de vídeo'
     context.close()
-    print(f'PASS: PokeIdle {width}px — fixture16/8/8, limite3/fila5, Twitch live muted, sync idempotente, missing=false preservado, offline avança fila, StopAll pausa, retoma e disable preserva sessões manuais. Core/domínio reais; APIs simuladas; sem XP servidor.')
+    print(f'PASS: PokeIdle {width}px — fixture16/8/8, limite3/fila5, Twitch só popout de chat silencioso, sync idempotente, missing=false preservado, offline avança fila, StopAll pausa, retoma e disable preserva sessões manuais. Core/domínio reais; APIs simuladas; sem XP servidor.')
 
 
 def run():

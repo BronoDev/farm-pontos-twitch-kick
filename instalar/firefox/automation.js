@@ -19,7 +19,7 @@ function kickUsesLive(state, item) {
 }
 
 function availableSlot(state, item) {
-  if (item.platform === 'twitch' && state.liveWatch?.enabled) return true;
+  if (item.platform === 'twitch' && state.liveWatch?.enabled && state.liveWatch.twitchMode === 'irc') return true;
   if (Object.values(state.sessions).filter(session => session.transport !== 'irc').length >= state.settings.maxConcurrent) return false;
   if (!kickUsesLive(state, item)) return true;
   return Object.entries(state.sessions).filter(([id, session]) => session.media === 'live' && state.channels.some(c => c.id === id && c.platform === 'kick')).length < state.settings.maxKickLives;

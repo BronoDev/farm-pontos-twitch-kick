@@ -1,48 +1,46 @@
 # Configurar a apresentação do painel
 
-O Chat Leve mantém os controles de sessões próximos da lista de canais. O menu da extensão oferece a versão compacta; use o botão de abrir em uma aba para trabalhar com mais espaço no computador. Em telas pequenas, o conteúdo se organiza em uma coluna.
+O menu da extensão oferece uma visualização compacta. Use **Abrir painel** para trabalhar em uma aba com mais espaço no computador. Em telas pequenas, o conteúdo se organiza em uma coluna.
 
-## Começar com os recursos necessários
+## Começar com o necessário
 
-Adicione um canal manualmente ou habilite PokeIdle em **Personalizar painel** e aguarde uma leitura da lista oficial. A apresentação acompanha essa configuração:
+Adicione um canal ou habilite PokeIdle em **Personalizar painel** e carregue a lista do jogo. As opções acompanham essa configuração:
 
-- As opções de vídeo Kick aparecem quando há pelo menos um canal Kick cadastrado.
-- O painel PokeIdle aparece quando você o habilita ou quando uma instalação anterior já tinha uma leitura da integração. Antes da primeira leitura, mostra apenas a configuração inicial. A lista, as métricas e a regra aparecem depois de receber dados do widget.
-- O resumo de XP e bônus aparece conforme os painéis escolhidos.
-- A central de avisos aparece quando existe uma pendência.
-- Modo da Kick, prioridade e diagnóstico ficam nos detalhes de cada canal, sem ocupar a lista inteira.
+- Os controles de vídeo aparecem somente para canais Kick.
+- A Twitch usa somente chat. O padrão é o popout oficial numa aba inativa e silenciosa, sem configurar uma credencial na extensão.
+- O painel PokeIdle mostra a plataforma dos canais encontrados. A lista, as métricas e a regra aparecem após receber uma leitura da página.
+- O resumo de XP e bônus aparece conforme os recursos escolhidos; avisos aparecem quando há pendências.
+- Modo da Kick, prioridade e diagnóstico ficam nos detalhes de cada canal.
 
-## Escolher como abrir um canal Kick
+## Escolher o modo Kick
 
-Ao selecionar Kick no formulário de cadastro, escolha o modo do canal. **Live na menor qualidade** abre o player oficial e tenta a menor resolução numérica disponível. **Só chat** abre apenas o chat. **Padrão da Kick** segue a opção geral de reprodução.
+No cadastro ou em **Opções do canal**, escolha **Live na menor qualidade**, **Só chat** ou **Padrão da Kick**. A escolha individual prevalece sobre o padrão geral, disponível em **Limites de consumo e recuperação → Padrão da Kick**.
 
-Para mudar um canal cadastrado, abra **Opções do canal**. A mudança migra somente sua sessão, se ela estiver aberta. Um canal fechado não é iniciado por isso. O padrão geral afeta apenas os canais que seguem esse padrão, preservando escolhas individuais.
-
-O padrão geral fica em **Limites de consumo e recuperação → Reprodução na Kick**. O resumo do canal distingue uma qualidade solicitada da resolução recebida em uma amostra do player. A menor qualidade disponível varia conforme a live; o aplicativo não mede uma economia de CPU ou memória nem confirma pontos concedidos.
-
-## Encontrar canais
-
-Com mais de cinco canais, use a busca e os filtros da lista. Eles alteram apenas os canais mostrados no painel: sessões e fila continuam seguindo seus controles e limites. Limpar a busca ou voltar ao filtro geral mostra a lista completa novamente.
+Mudar o modo migra somente a sessão daquele canal, se ela estiver aberta. Canais parados não são iniciados pela alteração. O painel distingue a qualidade solicitada da resolução recebida; a extensão não mede uma economia real de CPU ou memória.
 
 ## Escolher painéis adicionais
 
-Abra **Personalizar painel** e escolha o que pretende usar:
+Em **Personalizar painel**, mostre apenas o que pretende configurar:
 
-| Recurso | Quando habilitar |
+| Recurso | Uso |
 | --- | --- |
-| PokeIdle | Para conectar a lista de canais oficiais e configurar a automação Twitch. |
-| Checklist de bônus | Para cadastrar regras e acompanhar a confirmação manual de resgates. |
-| Histórico de XP e pontos | Para registrar saldos lidos no serviço e comparar leituras. |
-| Automação de lives | Para selecionar canais, acompanhar quando ficam ao vivo e configurar a conexão Twitch sem aba. |
+| PokeIdle | Ler canais Twitch/Kick e regras da página do jogo. |
+| Bônus e resgates | Registrar requisitos e sua confirmação manual de resgates. |
+| Histórico de XP e pontos | Comparar saldos lidos no serviço. |
+| Automação de lives | Selecionar canais e acompanhar sua automação. |
 
-Essas escolhas ficam salvas no próprio navegador e são mantidas ao reabrir o painel. Na atualização, um recurso que já tem dados aparece automaticamente quando ainda não existe uma preferência explícita de apresentação.
+As escolhas ficam salvas neste navegador. Dados antigos podem tornar um painel disponível quando ainda não existe uma preferência explícita. Ocultar uma seção preserva os dados e não interrompe uma automação já configurada. **Fechar todos** fecha as sessões gerenciadas e pausa novas aberturas.
 
-Ocultar uma seção altera somente sua apresentação. Os registros ficam salvos, e uma automação configurada continua com o comportamento anterior. Para interrompê-la, use seus controles; **Fechar todos** pausa a automação e fecha as sessões gerenciadas.
+Com mais de cinco canais, use a busca e os filtros. Eles mudam somente a lista mostrada no painel, sem interromper sessões ou alterar a fila.
 
-A configuração de horários foi substituída pela **Automação de lives**. Horários legados são desativados na primeira leitura após atualizar para a versão 0.9, sem apagar seus registros. Ativar o monitoramento desativa o modo automático do widget PokeIdle e impede reabilitá-lo enquanto estiver ativo. Desligar o monitoramento não reativa os modos anteriores. Saiba como autorizar a Twitch e escolher os canais em [AUTOMACAO.md](AUTOMACAO.md).
+## Twitch e a opção avançada
 
-## Conferir a visualização
+Na automação, mantenha o popout de chat para usar a sessão da Twitch deste navegador. A aba fica em segundo plano e continua na barra do navegador; isso não é uma página completamente invisível.
 
-Em um computador, confira o painel tanto no menu da extensão quanto em uma aba. Abra os detalhes de um canal e as seções configuradas para conferir o conteúdo completo. No celular, o navegador pode suspender as páginas em segundo plano; a adaptação do painel não muda essa limitação.
+Se escolher o modo avançado IRC sem nenhuma aba, a conexão de conta aparece para configuração local. Ela precisa de autorização própria, descrita em [AUTOMACAO.md](AUTOMACAO.md). Esse modo é opcional e não habilita um player Twitch.
 
-A apresentação não muda como as plataformas atribuem recompensas. Leitura do widget, vídeo ativo e registro local continuam sem comprovar crédito de XP no servidor. Consulte [VALIDACAO.md](VALIDACAO.md) para os testes executados e seus limites.
+## Conferir o comportamento
+
+Confira o painel no menu e em uma aba, abra os detalhes de um canal e revise a idade dos sinais. No Android, o navegador pode suspender abas, alarmes e conexões ao trocar de aplicativo ou bloquear a tela.
+
+Chat conectado, vídeo ativo e registro local não comprovam crédito de XP. Leia [VALIDACAO.md](VALIDACAO.md) para os testes e seus limites.

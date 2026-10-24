@@ -1,9 +1,9 @@
 {
   "name": "chat-leve",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "private": true,
   "type": "module",
-  "description": "Gerenciador local de chats em segundo plano da Twitch e Kick",
+  "description": "Chat Twitch sem player, lives Kick e canais PokeIdle em segundo plano",
   "engines": {
     "node": ">=22"
   },

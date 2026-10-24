@@ -1,41 +1,57 @@
 const POKEIDLE_TWITCH_RESERVED = new Set(['directory', 'videos', 'settings', 'login', 'signup', 'popout', 'search', 'subscriptions', 'downloads', 'inventory', 'wallet', 'turbo', 'prime', 'jobs', 'products', 'friends', 'drops', 'activate']);
+const POKEIDLE_KICK_RESERVED = new Set(['directory', 'browse', 'search', 'categories', 'category', 'following', 'featured', 'videos', 'clips', 'settings', 'login', 'signup', 'register', 'popout', 'subscriptions', 'downloads', 'wallet', 'jobs', 'activate', 'dashboard', 'profile', 'account', 'auth', 'transactions', 'about', 'support', 'help', 'contact', 'security', 'ads', 'advertise', 'gift', 'rewards', 'livestreams', 'terms-of-service', 'privacy-policy', 'community-guidelines', 'dmca-policy']);
+const POKEIDLE_WIDGET_SELECTOR = '.tw-canais, .kick-canais, .kc-canais, .k-canais';
 
 function pokeidleChannelLink(value) {
   try {
-    if (typeof value !== 'string' || !/^https:\/\/(?:www\.)?twitch\.tv\/[a-z0-9_]{1,25}\/?$/i.test(value)) return null;
+    // Valide o texto antes de URL(): a normalização não pode esconder traversal,
+    // credenciais, caracteres de controle ou uma origem que pareça ser a plataforma.
+    if (typeof value !== 'string' || /[\u0000-\u0020\\]/.test(value)) return null;
+    const twitch = /^https:\/\/(?:www\.)?twitch\.tv\/[a-z0-9_]{1,25}\/?$/i.test(value);
+    const kick = /^https:\/\/(?:www\.)?kick\.com\/[a-z0-9_][a-z0-9_-]{0,39}\/?$/i.test(value);
+    if (!twitch && !kick) return null;
     const url = new URL(value);
-    if (url.protocol !== 'https:' || !['twitch.tv', 'www.twitch.tv'].includes(url.hostname)
-      || url.username || url.password || url.port || url.search || url.hash) return null;
-    const match = url.pathname.match(/^\/([a-zA-Z0-9_]{1,25})\/?$/);
-    const name = match?.[1].toLowerCase();
-    return name && !POKEIDLE_TWITCH_RESERVED.has(name) ? name : null;
+    if (url.username || url.password || url.port || url.search || url.hash) return null;
+    const platform = twitch ? 'twitch' : 'kick';
+    const name = url.pathname.replace(/^\/|\/$/g, '').toLowerCase();
+    const reserved = twitch ? POKEIDLE_TWITCH_RESERVED : POKEIDLE_KICK_RESERVED;
+    return name && !reserved.has(name) ? { platform, name } : null;
   } catch { return null; }
 }
 
-// Lê somente a lista pública de canais do widget, sem executar o HTML nem seus botões.
-export function readPokeIdleTwitch(root) {
+// As classes comprovadas no HTML fornecido pertencem ao widget .tw-canais.
+// Um link Kick em outra parte da página informa o canal, não seu status ou bônus.
+export function readPokeIdleChannels(root) {
   const containers = root.matches?.('.tw-canais') ? [root] : [...root.querySelectorAll('.tw-canais')];
   const channels = [];
   const seen = new Set();
   let ruleText = '';
-  for (const container of containers) {
-    for (const anchor of container.querySelectorAll('a.tw-canal')) {
-      const name = pokeidleChannelLink(anchor.getAttribute('href'));
-      if (!name || seen.has(name)) continue;
-      seen.add(name);
-      const label = anchor.querySelector('.tw-canal-nome')?.textContent || name;
-      const displayName = label.replace(/\s+/g, ' ').trim().slice(0, 80) || name;
-      channels.push({ name, displayName, live: anchor.classList.contains('ao-vivo'), bonus: anchor.classList.contains('com-bonus'), missing: anchor.classList.contains('tw-falta-eu') });
-      if (!ruleText) {
-        const title = anchor.querySelector('.tw-canal-bonus[title]')?.getAttribute('title');
-        if (title) ruleText = title.replace(/\s+/g, ' ').trim().slice(0, 500);
-      }
-      if (channels.length === 100) return { ready: true, channels, ruleText };
+  function append(anchor, knownWidget) {
+    const target = pokeidleChannelLink(anchor.getAttribute('href'));
+    if (!target || (!knownWidget && target.platform !== 'kick')) return;
+    const id = `${target.platform}:${target.name}`;
+    if (seen.has(id) || channels.length >= 100) return;
+    seen.add(id);
+    const label = knownWidget ? anchor.querySelector('.tw-canal-nome')?.textContent : target.name;
+    const displayName = (label || target.name).replace(/\s+/g, ' ').trim().slice(0, 80) || target.name;
+    channels.push({ ...target, displayName,
+      live: knownWidget ? anchor.classList.contains('ao-vivo') : null,
+      bonus: knownWidget && anchor.classList.contains('com-bonus'),
+      missing: knownWidget && anchor.classList.contains('tw-falta-eu'), source: knownWidget ? 'widget' : 'link' });
+    if (!ruleText && knownWidget && target.platform === 'twitch') {
+      const title = anchor.querySelector('.tw-canal-bonus[title]')?.getAttribute('title');
+      if (title) ruleText = title.replace(/\s+/g, ' ').trim().slice(0, 500);
     }
   }
-  // Uma renderização vazia/ausente não é evidência de que todos os canais saíram do ar.
+  for (const container of containers) for (const anchor of container.querySelectorAll('a.tw-canal')) append(anchor, true);
+  // A página real pode usar um widget Kick diferente. Sem HTML desse widget,
+  // importamos somente links canônicos e deixamos a consulta de live ao monitor.
+  for (const anchor of root.querySelectorAll('a[href]')) append(anchor, false);
   return { ready: channels.length > 0, channels, ruleText };
 }
+
+// Compatibilidade com os consumidores existentes; a lista agora inclui plataforma.
+export function readPokeIdleTwitch(root) { return readPokeIdleChannels(root); }
 
 (() => {
   const api = globalThis.browser ?? globalThis.chrome;
@@ -85,14 +101,22 @@ export function readPokeIdleTwitch(root) {
   }
   function relevantMutation(mutation) {
     const element = mutation.target.nodeType === 1 ? mutation.target : mutation.target.parentElement;
-    if (mutation.type === 'attributes') return element?.matches('a.tw-canal, .tw-canais, .tw-canal-bonus');
+    // Também note href/classe removidos: validar apenas o valor novo perderia
+    // um link Kick que acabou de virar inválido. A observação já é do widget.
+    if (mutation.type === 'attributes') return element?.matches('a, .tw-canais, .tw-canal-bonus');
     if (mutation.type === 'characterData') return !!element?.closest('.tw-canal-nome');
     if (element?.closest('.tw-canal-nome')) return true;
-    return [...mutation.addedNodes, ...mutation.removedNodes].some(node => node.nodeType === 1
-      && (node.matches('a.tw-canal, .tw-canal-nome, .tw-canal-bonus, .tw-canais') || node.querySelector('a.tw-canal, .tw-canal-nome, .tw-canal-bonus, .tw-canais')));
+    return [...mutation.addedNodes, ...mutation.removedNodes].some(containsChannelNodes);
+  }
+  function containsChannelNodes(node) {
+    if (node.nodeType !== 1) return false;
+    if (node.matches(POKEIDLE_WIDGET_SELECTOR + ', a.tw-canal, .tw-canal-nome, .tw-canal-bonus') || node.querySelector(POKEIDLE_WIDGET_SELECTOR + ', a.tw-canal, .tw-canal-nome, .tw-canal-bonus')) return true;
+    const anchors = node.matches('a[href]') ? [node] : [...node.querySelectorAll('a[href]')];
+    return anchors.some(anchor => pokeidleChannelLink(anchor.getAttribute('href'))?.platform === 'kick');
   }
   function connectWidgets() {
-    const widgets = [...document.querySelectorAll('.tw-canais')];
+    // Nomes de containers apenas restringem a observação; não conferem status.
+    const widgets = [...document.querySelectorAll(POKEIDLE_WIDGET_SELECTOR)];
     for (const [widget, observer] of widgetObservers) if (!widget.isConnected) {
       observer.disconnect(); widgetObservers.delete(widget);
     }
@@ -114,7 +138,7 @@ export function readPokeIdleTwitch(root) {
     if (!liveRoute()) return;
     if (inFlight) { schedule(forcePending, MIN_INTERVAL); return; }
     connectWidgets();
-    const snapshot = readPokeIdleTwitch(document);
+    const snapshot = readPokeIdleChannels(document);
     if (!snapshot.ready) { reply(false); return; }
     const signature = JSON.stringify(snapshot);
     const force = forcePending;
@@ -147,9 +171,8 @@ export function readPokeIdleTwitch(root) {
   if (!connectWidgets() && document.documentElement) {
     // Escuta a renderização SPA apenas no início; depois consulta a raiz no heartbeat.
     rootObserver = new MutationObserver(mutations => {
-      if (mutations.some(mutation => [...mutation.addedNodes].some(node => node.nodeType === 1
-        && (node.matches('.tw-canais') || node.querySelector('.tw-canais'))))) {
-        if (connectWidgets()) schedule(false, 700);
+      if (mutations.some(mutation => [...mutation.addedNodes].some(containsChannelNodes))) {
+        connectWidgets(); schedule(false, 700);
       }
     });
     rootObserver.observe(document.documentElement, { childList: true, subtree: true });

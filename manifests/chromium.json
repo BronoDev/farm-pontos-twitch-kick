@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Chat Leve — Twitch e Kick",
-  "description": "Organize bônus PokeIdle, lives Twitch/Kick e consumo em segundo plano.",
-  "version": "0.9.0",
+  "description": "Chat Twitch sem player, lives Kick e canais PokeIdle em segundo plano.",
+  "version": "0.10.0",
   "minimum_chrome_version": "116",
   "permissions": [
     "storage",
@@ -30,8 +30,7 @@
     {
       "matches": [
         "https://kick.com/*",
-        "https://www.kick.com/*",
-        "https://www.twitch.tv/*"
+        "https://www.kick.com/*"
       ],
       "js": [
         "kick-quality.js",

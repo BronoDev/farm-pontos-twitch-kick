@@ -120,3 +120,10 @@ As verificações de interface usam Chromium e APIs de navegador simuladas, com 
 Os serviços de estado/autorização, o WebSocket e as respostas do servidor foram simulados nos testes. Não houve validação de login pessoal, entrada real no chat, reprodução/qualidade remota, consumo ou crédito de pontos/XP. Firefox, Opera GX e Android nativos também continuam sem validação nesta versão. A instalação Firefox permanente precisa de nova assinatura Mozilla; a assinatura anterior não cobre os arquivos alterados.
 
 Consulte [AUTOMACAO.md](AUTOMACAO.md) para configurar o OAuth oficial e os canais, e [KICK-VIDEO.md](KICK-VIDEO.md) para escolher chat ou live e conferir a qualidade recebida.
+
+## Versão 0.10: Twitch só chat e Kick do PokeIdle
+
+- `npm run package`, `npm run check` e **176 testes Node** passaram. As quatro distribuições 0.10.0 e seus ZIPs correspondem às fontes; os scripts de player estão restritos à Kick. Os dois pacotes Firefox passaram no `web-ext` 10.8.0 sem erros/avisos/observações e no teste de carregamento do painel distribuído com APIs simuladas.
+- As regressões cobrem popout Twitch sem player, migração das antigas abas gerenciadas, Kick importada, estados desconhecidos/offline, pausas e preferência Kick na fila sem exceder o limite. O fluxo misto passou no Chromium em 320/600/1280px; desktop, modos Kick, integração PokeIdle e IRC explícito também passaram nos cenários informados.
+- Os nove testes do leitor e sua verificação Chromium passaram. O HTML original fornecido contém somente Twitch; a marcação Kick adicional é **sintética**. Esses resultados não comprovam o DOM atual do PokeIdle nem respostas reais dos serviços.
+- Não houve validação de login pessoal, reprodução/qualidade remota, consumo ou crédito de pontos/XP, nem execução nativa Firefox/Opera GX/Android. Os ZIPs continuam sem assinatura; uma instalação Firefox permanente exige nova assinatura Mozilla.

@@ -1,6 +1,6 @@
 import { normalizeRewardsState, applyRewardsCommand, rewardSummary } from './rewards.js';
 import { operationalState, kickUsesLive, availableSlot, enqueueChannel, removeQueued, scheduledOwnersAlive, dueSchedules, healthReminders } from './automation.js';
-import { POKEIDLE_OWNER, POKEIDLE_URL, isPokeIdleUrl, pokeIdleChannels, normalizePokeIdle, pokeIdleEligible } from './pokeidle-state.js';
+import { POKEIDLE_OWNER, POKEIDLE_URL, isPokeIdleUrl, pokeIdleChannels, normalizePokeIdle, pokeIdleEligible, pokeIdleExcluded, pokeIdleKickLive } from './pokeidle-state.js';
 import { normalizeUiPreferences } from './ui-state.js';
 import { LIVE_WATCH_OWNER, normalizeLiveWatch, watchEligible, publicTwitchChat } from './live-watch.js';
 
@@ -35,14 +35,22 @@ export function matchesChat(url, item) {
 }
 
 export function sessionUrl(item, session) {
-  return session.media === 'live'
-    ? `${item.platform === 'kick' ? 'https://kick.com' : 'https://www.twitch.tv'}/${channel(item.platform, item.name).name}`
+  return item.platform === 'kick' && session.media === 'live'
+    ? `https://kick.com/${channel(item.platform, item.name).name}`
     : chatUrl(item);
 }
 
 function matchesSession(url, item, session) {
   try { return new URL(url).href === new URL(sessionUrl(item, session)).href; }
   catch { return false; }
+}
+
+function matchesLegacyTwitchLive(value, item) {
+  try {
+    const url = new URL(value);
+    return item.platform === 'twitch' && url.origin === 'https://www.twitch.tv' && !url.username && !url.password
+      && !url.search && !url.hash && [ `/${item.name}`, `/${item.name}/` ].includes(url.pathname);
+  } catch { return false; }
 }
 
 export function createController(api, { twitchChat } = {}) {
@@ -57,19 +65,23 @@ export function createController(api, { twitchChat } = {}) {
     return androidGecko;
   }
   async function read() {
-    const raw = await api.storage.local.get(['channels', 'sessions', 'kickLive', 'bonuses', 'measurements', 'schedules', 'settings', 'queue', 'queueSources', 'alerts', 'activeReminderIds', 'sessionHistory', 'automationPaused', 'pausedChannels', 'pokeidle', 'uiPreferences', 'liveWatch', 'twitchChatStatus', 'automationsMigrated']);
+    const raw = await api.storage.local.get(['channels', 'sessions', 'kickLive', 'bonuses', 'measurements', 'schedules', 'settings', 'queue', 'queueSources', 'alerts', 'activeReminderIds', 'sessionHistory', 'automationPaused', 'pausedChannels', 'pokeidle', 'uiPreferences', 'liveWatch', 'twitchChatStatus', 'automationsMigrated', 'platformRoutingMigrated']);
     const channels = Array.isArray(raw.channels) ? raw.channels : [];
     const rewards = normalizeRewardsState(raw);
     // Os horários antigos deixam de rodar após a substituição da agenda na interface.
     if (raw.automationsMigrated !== true) for (const schedule of rewards.schedules) schedule.enabled = false;
-    return { channels, sessions: raw.sessions || {}, kickLive: raw.kickLive !== false, pokeidle: normalizePokeIdle(raw.pokeidle), uiPreferences: normalizeUiPreferences(raw.uiPreferences), liveWatch: normalizeLiveWatch(raw.liveWatch, channels), twitchChat: publicTwitchChat(raw.twitchChatStatus), automationsMigrated: true, ...rewards, ...operationalState(raw, channels) };
+    const pokeidle = normalizePokeIdle(raw.pokeidle);
+    // A versão 0.9 desligava esta fonte ao ativar o monitor, impedindo a Kick.
+    if (raw.platformRoutingMigrated !== true && raw.liveWatch?.enabled === true && raw.pokeidle?.enabled === false) pokeidle.enabled = true;
+    return { channels, sessions: raw.sessions || {}, kickLive: raw.kickLive !== false, pokeidle, uiPreferences: normalizeUiPreferences(raw.uiPreferences), liveWatch: normalizeLiveWatch(raw.liveWatch, channels), twitchChat: publicTwitchChat(raw.twitchChatStatus), automationsMigrated: true, platformRoutingMigrated: true, ...rewards, ...operationalState(raw, channels) };
   }
   async function alive(session, item) {
     if (!session) return false;
     if (session.transport === 'irc') return item.platform === 'twitch';
     try {
       const tab = await api.tabs.get(session.tabId);
-      return matchesSession(tab.pendingUrl || tab.url, item, session);
+      const url = tab.pendingUrl || tab.url;
+      return matchesSession(url, item, session) || (session.media === 'live' && matchesLegacyTwitchLive(url, item));
     } catch { return false; }
   }
   return async function execute(message, sender = {}) {
@@ -81,7 +93,7 @@ export function createController(api, { twitchChat } = {}) {
       const session = item && state.sessions[item.id];
       if (!session || session.transport === 'irc' || !matchesSession(sender.url || sender.tab?.url, item, session)) return { managed: false };
       if (message.type.startsWith('kick') && (item.platform !== 'kick' || session.media !== 'live')) return { managed: false };
-      if (message.type.startsWith('player') && session.media !== 'live') return { managed: false };
+      if (message.type.startsWith('player') && (item.platform !== 'kick' || session.media !== 'live')) return { managed: false };
       if (['kickTelemetry', 'playerTelemetry'].includes(message.type)) {
         const sample = message.sample || {};
         const statuses = ['pending', 'requested', 'unavailable', 'autoplay-blocked'];
@@ -108,11 +120,14 @@ export function createController(api, { twitchChat } = {}) {
       catch { return { accepted: false }; }
       if (message.snapshot?.ready !== true) return { accepted: false };
       const entries = Array.isArray(message.snapshot.channels) ? message.snapshot.channels : [];
-      const channels = pokeIdleChannels(entries.slice(0, 200).filter(entry => entry && ['live', 'bonus', 'missing'].every(key => typeof entry[key] === 'boolean')));
+      const channels = pokeIdleChannels(entries.slice(0, 200).filter(entry => entry
+        && ['bonus', 'missing'].every(key => typeof entry[key] === 'boolean')
+        && (typeof entry.live === 'boolean' || (entry.platform === 'kick' && entry.live === null))));
       if (!channels.length) return { accepted: false };
       snapshot = { channels, ruleText: typeof message.snapshot.ruleText === 'string' ? message.snapshot.ruleText.replace(/\s+/g, ' ').trim().slice(0, 500) : '' };
     }
     const warnings = [];
+    const twitchMigrationsPending = new Set();
     async function save() { const stored = { ...state }; delete stored.twitchChat; await api.storage.local.set(stored); }
     function history(id, session, reason) {
       state.sessionHistory.push({ channelId: id, openedAt: session.openedAt, endedAt: now, media: session.media || 'chat', reason });
@@ -125,11 +140,34 @@ export function createController(api, { twitchChat } = {}) {
     if (message.type === 'tabRemoved' && state.pokeidle.sourceTabId === message.tabId) state.pokeidle.connected = false;
     if (snapshot) {
       Object.assign(state.pokeidle, snapshot, { observedAt: now, sourceTabId: sender.tab.id, connected: true });
-      for (const entry of snapshot.channels.filter(c => c.bonus && !state.pokeidle.excludedNames.includes(c.name))) {
-        const item = channel('twitch', entry.name);
+      for (const entry of snapshot.channels.filter(c => (c.platform === 'kick' || c.bonus) && !pokeIdleExcluded(state.pokeidle, `${c.platform}:${c.name}`))) {
+        const item = channel(entry.platform, entry.name);
         const existing = state.channels.find(c => c.id === item.id);
-        if (existing) existing.pokeidleOfficial = true;
-        else state.channels.push({ ...item, pokeidleOfficial: true, pokeidleAutoAdded: true });
+        if (existing) {
+          existing.pokeidleOfficial = entry.source !== 'link'; existing.pokeidleLinked = true;
+          if (item.platform === 'kick' && existing.priority === undefined) existing.priority = 1;
+          if (item.platform === 'kick' && !['chat', 'live'].includes(existing.kickMode)) existing.kickMode = 'live';
+        } else state.channels.push({ ...item, ...(item.platform === 'kick' ? { kickMode: 'live', priority: 1 } : {}), pokeidleOfficial: entry.source !== 'link', pokeidleLinked: true, pokeidleAutoAdded: true });
+      }
+    }
+    // Corrige abas de vídeo criadas pelas versões antigas sem abrir outra janela.
+    for (const item of state.channels.filter(c => c.platform === 'twitch')) {
+      const session = state.sessions[item.id];
+      if (session?.media !== 'live' || !Number.isInteger(session.tabId)) continue;
+      try {
+        const tab = await api.tabs.get(session.tabId);
+        const url = tab.pendingUrl || tab.url;
+        if (matchesLegacyTwitchLive(url, item)) {
+          const options = { url: chatUrl(item), active: false };
+          if (!await isAndroidGecko()) options.muted = true;
+          await api.tabs.update(session.tabId, options);
+        } else if (!matchesChat(url, item)) continue;
+        session.media = 'chat';
+        delete session.playback;
+        delete session.health;
+      } catch {
+        twitchMigrationsPending.add(item.id);
+        warnings.push(`${item.name}: não foi possível trocar a aba antiga pelo chat Twitch. Tente atualizar novamente.`);
       }
     }
     if (message.type === 'tabRemoved') for (const [id, session] of Object.entries(state.sessions)) {
@@ -154,7 +192,8 @@ export function createController(api, { twitchChat } = {}) {
     async function start(item, owners = ['manual']) {
       const existing = state.sessions[item.id];
       owners = [...new Set([...(existing?.ownerIds || (existing ? ['manual'] : [])), ...owners])];
-      const irc = item.platform === 'twitch' && (state.liveWatch.enabled || owners.includes(LIVE_WATCH_OWNER));
+      if (twitchMigrationsPending.has(item.id) && existing) { existing.ownerIds = owners; return; }
+      const irc = item.platform === 'twitch' && state.liveWatch.twitchMode === 'irc' && (state.liveWatch.enabled || owners.includes(LIVE_WATCH_OWNER));
       if (irc) {
         if (!/^[a-z0-9_]{1,25}$/.test(item.name)) throw new Error('Use um nome de canal Twitch válido para conectar o chat.');
         const chat = publicTwitchChat(twitchChat ? await twitchChat.status() : null);
@@ -173,8 +212,8 @@ export function createController(api, { twitchChat } = {}) {
         await save();
         return;
       }
-      const media = kickUsesLive(state, item) || (item.platform === 'twitch' && owners.includes(POKEIDLE_OWNER)) ? 'live' : 'chat';
-      if (existing?.mode === 'background' && (existing.media || 'chat') === media) {
+      const media = kickUsesLive(state, item) ? 'live' : 'chat';
+      if (existing?.transport !== 'irc' && existing?.mode === 'background' && (existing.media || 'chat') === media) {
         existing.ownerIds = [...new Set([...(existing.ownerIds || ['manual']), ...owners])];
         removeQueued(state, item.id);
         return;
@@ -204,9 +243,28 @@ export function createController(api, { twitchChat } = {}) {
       for (const id of ordered) {
         const item = state.channels.find(c => c.id === id);
         if (!item) { removeQueued(state, id); continue; }
-        const owners = (state.queueSources[id] || ['manual']).filter(owner => owner === 'manual' || (owner === LIVE_WATCH_OWNER ? watchEligible(state, id, now) : owner === POKEIDLE_OWNER ? !state.liveWatch.enabled && pokeIdleEligible(state, id, now) : state.schedules.some(s => s.id === owner && s.enabled && now < s.endsAt)));
+        const owners = (state.queueSources[id] || ['manual']).filter(owner => owner === 'manual' || (owner === LIVE_WATCH_OWNER ? watchEligible(state, id, now) : owner === POKEIDLE_OWNER ? pokeIdleEligible(state, id, now) : state.schedules.some(s => s.id === owner && s.enabled && now < s.endsAt)));
         if (!owners.length) { removeQueued(state, id); continue; }
         if (state.pausedChannels.includes(id)) { removeQueued(state, id); continue; }
+        if (twitchMigrationsPending.has(id)) continue;
+        if (!state.sessions[id] && item.platform === 'kick' && owners.includes(POKEIDLE_OWNER) && !availableSlot(state, item)) {
+          const tabCount = Object.values(state.sessions).filter(session => session.transport !== 'irc').length;
+          const kickCount = Object.entries(state.sessions).filter(([key, session]) => session.media === 'live' && state.channels.some(c => c.id === key && c.platform === 'kick')).length;
+          // Libera somente uma vaga ocupada pela própria automação PokeIdle,
+          // sem desfazer sessões manuais ou a prioridade escolhida pelo usuário.
+          if (tabCount >= state.settings.maxConcurrent && (!kickUsesLive(state, item) || kickCount < state.settings.maxKickLives)) {
+            const victim = state.channels.filter(candidate => {
+              const session = state.sessions[candidate.id];
+              return candidate.platform === 'twitch' && session?.media === 'chat' && session.transport !== 'irc'
+                && session.ownerIds?.length === 1 && session.ownerIds[0] === POKEIDLE_OWNER
+                && (candidate.priority || 0) < (item.priority || 0);
+            }).sort((a, b) => (a.priority || 0) - (b.priority || 0))[0];
+            if (victim) await apply(victim, async current => {
+              await stop(current, 'kick-priority');
+              enqueueChannel(state, current.id, POKEIDLE_OWNER);
+            });
+          }
+        }
         if (state.sessions[id] || availableSlot(state, item)) await apply(item, current => start(current, owners));
       }
     }
@@ -222,17 +280,24 @@ export function createController(api, { twitchChat } = {}) {
     }
     if (message.type === 'setLiveWatch') {
       if (typeof message.enabled !== 'boolean' || !Array.isArray(message.channelIds) || (message.enabled && !message.channelIds.length) || message.channelIds.length > 100 || message.channelIds.some(id => typeof id !== 'string' || !state.channels.some(item => item.id === id))) throw new Error('Configuração de automação inválida.');
+      if (message.twitchMode !== undefined && !['chat', 'irc'].includes(message.twitchMode)) throw new Error('Modo de chat Twitch inválido.');
       state.liveWatch.enabled = message.enabled;
+      if (message.twitchMode !== undefined) state.liveWatch.twitchMode = message.twitchMode;
       state.liveWatch.channelIds = [...new Set(message.channelIds)];
       if (message.enabled) {
         state.automationPaused = false;
         state.pausedChannels = state.pausedChannels.filter(id => !state.liveWatch.channelIds.includes(id));
-        state.pokeidle.enabled = false;
         for (const schedule of state.schedules) schedule.enabled = false;
       }
     } else if (message.type === 'liveWatchSnapshot') {
       for (const id of state.liveWatch.channelIds) state.liveWatch.statuses[id] = { live: typeof message.statuses?.[id] === 'boolean' ? message.statuses[id] : null, checkedAt: now };
       state.liveWatch.lastCheckedAt = now;
+    } else if (message.type === 'pokeidleKickSnapshot') {
+      for (const item of state.channels.filter(c => c.platform === 'kick' && (state.pokeidle.channels.some(entry => entry.platform === 'kick' && entry.name === c.name) || state.sessions[c.id]?.ownerIds?.includes(POKEIDLE_OWNER)))) {
+        const id = item.id;
+        if (pokeIdleExcluded(state.pokeidle, id)) continue;
+        state.pokeidle.kickStatuses[id] = { live: typeof message.statuses?.[id] === 'boolean' ? message.statuses[id] : null, checkedAt: now };
+      }
     } else if (message.type === 'add') {
       const item = channel(message.platform, message.input);
       if (message.kickMode !== undefined && (item.platform !== 'kick' || !['default', 'live', 'chat'].includes(message.kickMode))) throw new Error('Modo Kick inválido.');
@@ -243,6 +308,7 @@ export function createController(api, { twitchChat } = {}) {
       }
       else existing.pokeidleAutoAdded = false;
       if (item.platform === 'twitch') state.pokeidle.excludedNames = state.pokeidle.excludedNames.filter(name => name !== item.name);
+      state.pokeidle.excludedIds = state.pokeidle.excludedIds.filter(id => id !== item.id);
     } else if (['start', 'stop', 'remove'].includes(message.type)) {
       const item = getItem(message.id);
       if (message.type === 'start') {
@@ -253,7 +319,10 @@ export function createController(api, { twitchChat } = {}) {
         if (!state.pausedChannels.includes(item.id)) state.pausedChannels.push(item.id);
         await stop(item);
         if (message.type === 'remove') {
-          if (item.pokeidleOfficial && !state.pokeidle.excludedNames.includes(item.name)) state.pokeidle.excludedNames.push(item.name);
+          if (item.pokeidleOfficial || item.pokeidleLinked) {
+            if (!state.pokeidle.excludedIds.includes(item.id)) state.pokeidle.excludedIds.push(item.id);
+            if (item.platform === 'twitch' && !state.pokeidle.excludedNames.includes(item.name)) state.pokeidle.excludedNames.push(item.name);
+          }
           state.channels = state.channels.filter(c => c.id !== item.id);
           state.pausedChannels = state.pausedChannels.filter(id => id !== item.id);
           state.schedules.forEach(s => { s.channelIds = s.channelIds.filter(id => id !== item.id); });
@@ -293,7 +362,6 @@ export function createController(api, { twitchChat } = {}) {
       else await openUrl(POKEIDLE_URL);
     } else if (message.type === 'setPokeIdle') {
       if (typeof message.enabled !== 'boolean') throw new Error('Opção PokeIdle inválida.');
-      if (message.enabled && state.liveWatch.enabled) throw new Error('Use a automação de lives para conectar o chat Twitch sem abas.');
       state.pokeidle.enabled = message.enabled;
     } else if (message.type === 'refreshPokeIdle') {
       if (!state.pokeidle.connected) warnings.push('Abra o PokeIdle e aguarde a lista de canais oficiais carregar para sincronizar.');
@@ -324,10 +392,16 @@ export function createController(api, { twitchChat } = {}) {
       for (const schedule of state.schedules) if (schedule.enabled && now >= schedule.startsAt && now < schedule.endsAt) schedule.startedAt = null;
     } else if (!['status', 'tick', 'tabRemoved', 'pokeidleSnapshot'].includes(message.type) && !applyRewardsCommand(state, message, now)) throw new Error('Comando desconhecido.');
 
+    // A opção padrão do monitor também converte sessões IRC antigas em popout.
+    if (state.liveWatch.twitchMode !== 'irc') for (const item of state.channels.filter(c => c.platform === 'twitch' && state.sessions[c.id]?.transport === 'irc')) {
+      await apply(item, current => start(current, state.sessions[current.id].ownerIds || ['manual']));
+    }
+
     // O monitor controla somente sua participação; sessões manuais são preservadas.
     for (const item of state.channels) {
       const sample = state.liveWatch.statuses[item.id];
-      const revoked = !state.liveWatch.enabled || !state.liveWatch.channelIds.includes(item.id) || sample?.live === false;
+      const continuousChat = item.platform === 'twitch' && state.liveWatch.twitchMode !== 'irc';
+      const revoked = !state.liveWatch.enabled || !state.liveWatch.channelIds.includes(item.id) || (!continuousChat && sample?.live === false);
       if (revoked) {
         const queued = (state.queueSources[item.id] || []).filter(owner => owner !== LIVE_WATCH_OWNER);
         if (queued.length) state.queueSources[item.id] = queued;
@@ -345,8 +419,9 @@ export function createController(api, { twitchChat } = {}) {
     // Ausência temporária do widget não significa offline. Só sinais explícitos
     // removem a participação PokeIdle de uma sessão; donos manuais são preservados.
     for (const item of state.channels) {
-      const entry = state.pokeidle.channels.find(c => `twitch:${c.name}` === item.id);
-      const revoked = state.liveWatch.enabled || !state.pokeidle.enabled || (snapshot && entry && (!entry.live || !entry.bonus));
+      const entry = state.pokeidle.channels.find(c => `${c.platform}:${c.name}` === item.id);
+      const sourceOffline = item.platform === 'kick' ? pokeIdleKickLive(state.pokeidle, item.id, now) === false : snapshot && entry && (!entry.live || !entry.bonus);
+      const revoked = (item.platform === 'twitch' && state.liveWatch.enabled) || !state.pokeidle.enabled || sourceOffline || pokeIdleExcluded(state.pokeidle, item.id);
       if (revoked) {
         const queuedOwners = (state.queueSources[item.id] || []).filter(owner => owner !== POKEIDLE_OWNER);
         if (queuedOwners.length) state.queueSources[item.id] = queuedOwners;
@@ -358,7 +433,7 @@ export function createController(api, { twitchChat } = {}) {
           else await apply(item, current => stop(current, 'pokeidle-ineligible'));
         }
       }
-      if (!state.liveWatch.enabled && !state.automationPaused && !state.pausedChannels.includes(item.id) && pokeIdleEligible(state, item.id, now)) {
+      if (!state.automationPaused && !state.pausedChannels.includes(item.id) && pokeIdleEligible(state, item.id, now)) {
         enqueueChannel(state, item.id, POKEIDLE_OWNER);
       }
     }
@@ -375,7 +450,7 @@ export function createController(api, { twitchChat } = {}) {
         for (const owner of owners) enqueueChannel(state, item.id, owner);
       }
     }
-    if (['tick', 'resumeAutomation', 'addSchedule', 'toggleSchedule', 'removeSchedule', 'setLiveWatch', 'liveWatchSnapshot'].includes(message.type)) {
+    if (['tick', 'resumeAutomation', 'addSchedule', 'toggleSchedule', 'removeSchedule', 'setLiveWatch', 'liveWatchSnapshot', 'pokeidleKickSnapshot'].includes(message.type)) {
       for (const request of dueSchedules(state, now)) {
         if (state.sessions[request.id]) {
           const session = state.sessions[request.id];

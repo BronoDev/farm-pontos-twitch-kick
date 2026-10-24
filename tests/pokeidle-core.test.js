@@ -68,7 +68,7 @@ function snapshot(b, channels = fixtureEntries, extra = {}, sender = source()) {
   return b.run({ type: 'pokeidleSnapshot', snapshot: { ready: true, channels, ruleText, ...extra } }, sender);
 }
 
-test('importa os 16 canais da fixture e abre somente 3 dos 8 elegíveis, com fila de 5 e vídeo Twitch', async t => {
+test('importa os 16 canais da fixture e abre somente 3 dos 8 elegíveis, com fila de 5 e somente chat Twitch', async t => {
   clock(t);
   assert.equal(fixtureEntries.length, 16);
   assert.equal(liveEntries.length, 8);
@@ -80,9 +80,9 @@ test('importa os 16 canais da fixture e abre somente 3 dos 8 elegíveis, com fil
   assert.equal(b.data.queue.length, 5);
   assert.ok(b.data.queue.every(id => liveEntries.some(entry => idFor(entry) === id)));
   for (const [id, session] of Object.entries(b.data.sessions)) {
-    assert.equal(session.media, 'live');
+    assert.equal(session.media, 'chat');
     assert.deepEqual(session.ownerIds, [POKEIDLE_OWNER]);
-    assert.equal(b.tabs.get(session.tabId).url, `https://www.twitch.tv/${id.slice('twitch:'.length)}`);
+    assert.equal(b.tabs.get(session.tabId).url, `https://www.twitch.tv/popout/${id.slice('twitch:'.length)}/chat?popout=`);
     assert.equal(b.tabs.get(session.tabId).active, false);
     assert.equal(b.tabs.get(session.tabId).muted, true);
   }
@@ -103,7 +103,7 @@ test('retirada de tw-falta-eu não fecha sessões existentes e não inicia outro
   assert.deepEqual(b.removed, []);
 });
 
-test('iniciar manualmente um canal automático na fila cria uma única live com os dois donos', async t => {
+test('iniciar manualmente um canal automático na fila cria um único chat com os dois donos', async t => {
   clock(t);
   const b = browser();
   await snapshot(b);
@@ -116,7 +116,7 @@ test('iniciar manualmente um canal automático na fila cria uma única live com 
   const before = b.opened.length;
   const state = await b.run({ type: 'start', id: queued });
   assert.equal(b.opened.length, before + 1);
-  assert.equal(b.opened.at(-1).url, `https://www.twitch.tv/${queued.slice(7)}`);
+  assert.equal(b.opened.at(-1).url, `https://www.twitch.tv/popout/${queued.slice(7)}/chat?popout=`);
   assert.deepEqual(new Set(state.sessions[queued].ownerIds), new Set(['manual', POKEIDLE_OWNER]));
 });
 
@@ -297,7 +297,7 @@ test('sinais ausentes, nulos ou de tipo inválido não são interpretados como o
   assert.equal(b.removed.length, 0);
 });
 
-test('canal Twitch manual é migrado de chat para live e mantém seu dono manual', async t => {
+test('canal Twitch manual mantém o chat existente e compartilha o dono com o PokeIdle', async t => {
   clock(t);
   const b = browser();
   const entry = liveEntries[0];
@@ -307,8 +307,10 @@ test('canal Twitch manual é migrado de chat para live e mantém seu dono manual
   const chatTab = b.data.sessions[id].tabId;
   assert.equal(b.tabs.get(chatTab).url, `https://www.twitch.tv/popout/${entry.name}/chat?popout=`);
   await snapshot(b, [entry]);
-  assert.ok(b.removed.includes(chatTab));
-  assert.equal(b.data.sessions[id].media, 'live');
+  assert.ok(!b.removed.includes(chatTab));
+  assert.equal(b.opened.length, 1);
+  assert.equal(b.data.sessions[id].tabId, chatTab);
+  assert.equal(b.data.sessions[id].media, 'chat');
   assert.deepEqual(new Set(b.data.sessions[id].ownerIds), new Set(['manual', POKEIDLE_OWNER]));
   assert.ok(!b.data.channels.find(channel => channel.id === id).pokeidleAutoAdded);
   const liveTab = b.data.sessions[id].tabId;
@@ -317,7 +319,7 @@ test('canal Twitch manual é migrado de chat para live e mantém seu dono manual
   assert.deepEqual(b.data.sessions[id].ownerIds, ['manual']);
 });
 
-test('limite de vídeos Kick não conta lives Twitch e não bloqueia sua fila', async t => {
+test('limite de vídeos Kick não conta chats Twitch e não bloqueia sua fila', async t => {
   clock(t);
   const b = browser({ settings: { maxConcurrent: 4, maxKickLives: 1 } });
   await b.run({ type: 'add', platform: 'kick', input: 'primeiro' });

@@ -148,6 +148,9 @@ def run_size(browser, origin, width, height):
     assert page.locator('#schedule-end').count()==0
     for checkbox in page.locator('#watch-channels input').all():
         checkbox.check()
+    assert page.locator('#watch-twitch-mode').input_value() == 'chat', 'O modo inicial deve usar apenas o popout de chat'
+    assert page.locator('#twitch-chat-settings').is_hidden(), 'Credencial IRC só aparece após escolha explícita do modo avançado'
+    page.locator('#watch-twitch-mode').select_option('irc')
     helpers['open_details'](page,'#twitch-chat-settings')
     page.locator('#twitch-token').fill(INVALID_TEST_TOKEN)
     click(page,'#connect-twitch-chat')
@@ -162,6 +165,7 @@ def run_size(browser, origin, width, height):
     page.locator('#watch-form button[type=submit]').click()
     idle(page)
     assert page.evaluate('__state().liveWatch.enabled')
+    assert page.evaluate('__state().liveWatch.twitchMode') == 'irc'
     assert page.evaluate('Object.keys(__state().sessions).length')==0
 
     page.evaluate('__setLive(true,true)')

@@ -30,14 +30,14 @@ function fixture({ configured = true } = {}) {
   };
   const run = createController(api, { twitchChat: chat });
   const add = async (platform, name) => run({ type: 'add', platform, input: name });
-  const enable = async channelIds => run({ type: 'setLiveWatch', enabled: true, channelIds });
+  const enable = async (channelIds, twitchMode = 'irc') => run({ type: 'setLiveWatch', enabled: true, channelIds, twitchMode });
   const sample = async statuses => run({ type: 'liveWatchSnapshot', statuses });
   return { data, tabs, api, chat, run, add, enable, sample, opened, removed, joined };
 }
 
 test('normaliza referências/estados e trata consultas incompletas como desconhecidas', () => {
   const channels = [{ id: 'kick:yetz' }];
-  assert.deepEqual(normalizeLiveWatch(null, channels), { enabled: false, channelIds: [], statuses: {}, lastCheckedAt: null });
+  assert.deepEqual(normalizeLiveWatch(null, channels), { enabled: false, channelIds: [], statuses: {}, lastCheckedAt: null, twitchMode: 'chat' });
   const state = normalizeLiveWatch({ enabled: true, channelIds: ['kick:yetz', 'outro', 'kick:yetz'], statuses: { 'kick:yetz': { live: 'true', checkedAt: 100 } } }, channels);
   assert.deepEqual(state.channelIds, ['kick:yetz']);
   assert.equal(state.statuses['kick:yetz'].live, null);
@@ -125,15 +125,15 @@ test('offline e desativar monitor preservam participação manual e abas pessoai
   assert.ok(state.sessions['kick:yetz']); assert.ok(b.tabs.has(99)); assert.deepEqual(b.removed, []);
 });
 
-test('ativar monitor desativa agendas e PokeIdle legados sem apagar dados ou os reativar depois', async () => {
+test('ativar monitor desativa agendas sem apagar dados nem desabilitar a leitura PokeIdle', async () => {
   const b = fixture();
   await b.add('kick', 'yetz');
   const now = Date.now();
   await b.run({ type: 'addSchedule', schedule: { channelIds: ['kick:yetz'], startsAt: now + 100000, endsAt: now + 200000 } });
   let state = await b.enable(['kick:yetz']);
-  assert.equal(state.schedules.length, 1); assert.equal(state.schedules[0].enabled, false); assert.equal(state.pokeidle.enabled, false);
+  assert.equal(state.schedules.length, 1); assert.equal(state.schedules[0].enabled, false); assert.equal(state.pokeidle.enabled, true);
   state = await b.run({ type: 'setLiveWatch', enabled: false, channelIds: [] });
-  assert.equal(state.schedules[0].enabled, false); assert.equal(state.pokeidle.enabled, false);
+  assert.equal(state.schedules[0].enabled, false); assert.equal(state.pokeidle.enabled, true);
 });
 
 test('configuração inválida não altera estado e dados públicos nunca contêm credenciais', async () => {
@@ -151,7 +151,7 @@ test('provedores consultam somente selecionados e preservam null em erros HTTP o
   const channels = ['online', 'offline', 'broken', 'denied'].map(name => ({ id: `kick:${name}`, platform: 'kick', name }));
   channels.push({ id: 'twitch:streamer', platform: 'twitch', name: 'streamer' }, { id: 'kick:not_selected', platform: 'kick', name: 'not_selected' });
   const calls = [];
-  const state = { channels, liveWatch: { enabled: true, channelIds: channels.slice(0, 5).map(item => item.id) } };
+  const state = { channels, liveWatch: { enabled: true, twitchMode: 'irc', channelIds: channels.slice(0, 5).map(item => item.id) } };
   const fetch = async (url, options) => {
     calls.push({ url, options });
     const name = url.split('/').at(-1);
@@ -176,11 +176,11 @@ test('chats IRC não consomem vagas de abas Kick e reduzir limite não os encerr
   assert.equal(Object.keys(state.sessions).length, 3); assert.deepEqual(b.removed, []);
 });
 
-test('modo PokeIdle legado não pode abrir vídeo Twitch durante monitoramento', async () => {
+test('PokeIdle continua habilitável durante monitoramento sem criar vídeo Twitch', async () => {
   const b = fixture(); await b.add('twitch', 'tftoddy'); await b.enable(['twitch:tftoddy']);
-  await assert.rejects(b.run({ type: 'setPokeIdle', enabled: true }), /sem abas/);
+  const state = await b.run({ type: 'setPokeIdle', enabled: true });
+  assert.equal(state.pokeidle.enabled, true);
   assert.equal(b.opened.length, 0);
-  assert.equal(b.data.pokeidle.enabled, false);
 });
 
 test('background consulta fora da fila, usa alarmes e recusa comandos da página de conteúdo', { timeout: 3000 }, async () => {

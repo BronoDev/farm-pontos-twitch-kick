@@ -11,11 +11,12 @@ export function normalizeLiveWatch(raw, channels) {
     if (!entry || !Number.isFinite(entry.checkedAt) || entry.checkedAt <= 0) continue;
     statuses[id] = { live: typeof entry.live === 'boolean' ? entry.live : null, checkedAt: entry.checkedAt };
   }
-  return { enabled: raw.enabled === true, channelIds, statuses, lastCheckedAt: Number.isFinite(raw.lastCheckedAt) && raw.lastCheckedAt > 0 ? raw.lastCheckedAt : null };
+  return { enabled: raw.enabled === true, twitchMode: raw.twitchMode === 'irc' ? 'irc' : 'chat', channelIds, statuses, lastCheckedAt: Number.isFinite(raw.lastCheckedAt) && raw.lastCheckedAt > 0 ? raw.lastCheckedAt : null };
 }
 
 export function watchEligible(state, id, now) {
   const watch = state.liveWatch;
+  if (watch.enabled && watch.twitchMode !== 'irc' && id.startsWith('twitch:') && watch.channelIds.includes(id)) return true;
   const sample = watch.statuses[id];
   return watch.enabled && watch.channelIds.includes(id) && sample?.live === true && now >= sample.checkedAt && now - sample.checkedAt <= LIVE_WATCH_FRESH_MS;
 }
@@ -60,7 +61,7 @@ export async function collectLiveWatch(state, twitchChat, options = {}) {
   await Promise.all(Array.from({ length: Math.min(3, kick.length) }, worker));
   const twitch = selected.filter(item => item.platform === 'twitch');
   let live = {};
-  try { if (twitch.length && twitchChat) live = await twitchChat.liveStatuses(twitch.map(item => item.name)); }
+  try { if (twitch.length && state.liveWatch.twitchMode === 'irc' && twitchChat) live = await twitchChat.liveStatuses(twitch.map(item => item.name)); }
   catch { /* Falhas de consulta não são sinais de offline. */ }
   for (const item of twitch) statuses[item.id] = typeof live?.[item.name] === 'boolean' ? live[item.name] : null;
   return statuses;

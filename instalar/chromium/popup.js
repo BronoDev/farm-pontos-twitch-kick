@@ -190,16 +190,24 @@ function resetChannelFilters() {
   if (lastState) renderChannels(lastState);
 }
 const POKEIDLE_OWNER = 'pokeidle:twitch';
+function sourceLive(item, state) {
+  const sample = state.pokeidle?.kickStatuses?.[`kick:${item.name}`];
+  if (item.platform === 'kick' && Number.isFinite(sample?.checkedAt) && Date.now() >= sample.checkedAt && Date.now() - sample.checkedAt <= 180000 && typeof sample.live === 'boolean') return sample.live;
+  return typeof item.live === 'boolean' ? item.live : null;
+}
 function renderPokeIdleChannels(state) {
   const list = $('#pokeidle-channels');
   const filter = $('#pokeidle-filter').value;
-  const channels = (state.pokeidle?.channels || []).filter(item => filter === 'all' || (filter === 'eligible' && item.live && item.bonus && item.missing) || (filter === 'live-bonus' && item.live && item.bonus) || (filter === 'missing' && item.missing));
+  const channels = (state.pokeidle?.channels || []).filter(item => filter === 'all' || (['kick', 'twitch'].includes(filter) && (item.platform || 'twitch') === filter) || (filter === 'eligible' && sourceLive(item, state) === true && (item.platform === 'kick' || (item.bonus && item.missing))) || (filter === 'live-bonus' && sourceLive(item, state) === true && item.bonus) || (filter === 'missing' && item.missing));
   list.replaceChildren();
   if (!channels.length) empty(list, 'Nenhum canal nesse filtro na última leitura.');
   for (const item of channels) {
-    const node = card(item.displayName || item.name);
-    const labels = [item.live ? 'Ao vivo na origem' : 'Sem sinal de live', item.bonus ? 'Com bônus na origem' : 'Sem indicação de bônus', item.missing ? 'Marcado como faltante' : 'Sem indicação de falta'];
-    const id = `twitch:${item.name}`;
+    const node = card(`${item.platform === 'kick' ? 'Kick' : 'Twitch'} / ${item.displayName || item.name}`);
+    const live = sourceLive(item, state);
+    const labels = [live === true ? 'Sinal de live' : live === false ? 'Sinal de offline' : 'Status a verificar'];
+    if (item.source === 'link') labels.push('Link encontrado na página; bônus não confirmado');
+    else labels.push(item.bonus ? 'Com bônus na origem' : 'Sem indicação de bônus', item.missing ? 'Marcado como faltante' : 'Sem indicação de falta');
+    const id = `${item.platform || 'twitch'}:${item.name}`;
     if (state.sessions[id]?.ownerIds?.includes(POKEIDLE_OWNER)) labels.push('Aba automática aberta');
     else if (state.queue.includes(id) && state.queueSources?.[id]?.includes(POKEIDLE_OWNER)) labels.push('Na fila automática');
     node.append(element('p', labels.join(' · ')));
@@ -209,8 +217,9 @@ function renderPokeIdleChannels(state) {
 function renderPokeIdle(state) {
   const source = state.pokeidle || {};
   const channels = Array.isArray(source.channels) ? source.channels : [];
-  const eligible = channels.filter(item => item.live && item.bonus && item.missing);
-  const active = Object.entries(state.sessions).filter(([id, session]) => id.startsWith('twitch:') && session.ownerIds?.includes(POKEIDLE_OWNER));
+  const twitch = channels.filter(item => item.platform !== 'kick');
+  const eligible = channels.filter(item => sourceLive(item, state) === true && (item.platform === 'kick' || (!state.liveWatch?.enabled && item.bonus && item.missing)));
+  const active = Object.entries(state.sessions).filter(([, session]) => session.ownerIds?.includes(POKEIDLE_OWNER));
   const queued = state.queue.filter(id => state.queueSources?.[id]?.includes(POKEIDLE_OWNER));
   const observed = Number.isFinite(source.observedAt) && source.observedAt > 0;
   const stale = observed && Date.now() - source.observedAt > 180000;
@@ -220,11 +229,13 @@ function renderPokeIdle(state) {
   $('#pokeidle-connection').textContent = connected ? 'Conectado' : observed ? 'Aguardando leitura' : 'Não conectado';
   $('#pokeidle-connection').classList.toggle('connected', connected);
   $('#pokeidle-enabled').checked = source.enabled !== false;
-  $('#pokeidle-enabled').closest('label').hidden = state.liveWatch?.enabled === true;
+  $('#pokeidle-enabled').closest('label').hidden = false;
+  $('#pokeidle-twitch-count').textContent = String(twitch.length);
+  $('#pokeidle-kick-count').textContent = String(channels.length - twitch.length);
   $('#pokeidle-official-count').textContent = String(channels.length);
-  $('#pokeidle-live-bonus-count').textContent = String(channels.filter(item => item.live && item.bonus).length);
-  $('#pokeidle-missing-count').textContent = String(channels.filter(item => item.missing).length);
-  $('#pokeidle-sessions').textContent = `${active.length} sessões Twitch do PokeIdle abertas · ${queued.length} na fila automática.`;
+  $('#pokeidle-live-bonus-count').textContent = String(twitch.filter(item => item.live === true && item.bonus).length);
+  $('#pokeidle-missing-count').textContent = String(twitch.filter(item => item.missing).length);
+  $('#pokeidle-sessions').textContent = `${active.filter(([id]) => id.startsWith('twitch:')).length} chats Twitch · ${active.filter(([id]) => id.startsWith('kick:')).length} sessões Kick · ${queued.length} na fila do PokeIdle.`;
   const sourceUrl = source.sourceUrl || 'https://pokeidle.io/app';
   const parts = [`Origem: ${sourceUrl}`];
   if (observed) parts.push(`última leitura: ${formatTime(source.observedAt)}`);
@@ -237,10 +248,10 @@ function renderPokeIdle(state) {
   $('#pokeidle-error').textContent = source.lastError ? `Sincronização: ${source.lastError}` : '';
   $('#pokeidle-rule-text').textContent = source.ruleText || 'Ainda sem regra recebida.';
   let waiting = '';
-  if (source.enabled === false) waiting = 'Automação do PokeIdle desativada. Sessões manuais e canais Kick são preservados.';
+  if (source.enabled === false) waiting = 'Automação do PokeIdle desativada. Sessões iniciadas manualmente são preservadas.';
   else if (state.automationPaused) waiting = 'Automação pausada. Use Iniciar todos ou Retomar automação para permitir novas aberturas.';
   else if (queued.length) waiting = `${queued.length} canais aguardam na fila automática. Limite atual: ${state.settings.maxConcurrent ?? 3} abas gerenciadas. Ajuste o limite em Limites de consumo se desejar; ele não aumenta automaticamente.`;
-  else if (observed && source.connected === true && !stale && eligible.some(item => !state.sessions[`twitch:${item.name}`]?.ownerIds?.includes(POKEIDLE_OWNER))) waiting = 'Há canais ao vivo, com bônus e marcados faltantes sem sessão automática. Sincronize novamente e confira os limites.';
+  else if (observed && source.connected === true && !stale && eligible.some(item => !state.sessions[`${item.platform || 'twitch'}:${item.name}`])) waiting = 'Há canais elegíveis sem sessão automática. Sincronize novamente e confira os limites.';
   $('#pokeidle-waiting').hidden = !waiting;
   $('#pokeidle-waiting').textContent = waiting;
   renderPokeIdleChannels(state);
@@ -315,8 +326,9 @@ function renderSchedules(state) {
   if (!uiPanelVisible(state, 'schedule')) return;
   const watch = state.liveWatch || {};
   $('#watch-enabled').checked = watchDraft?.enabled ?? watch.enabled === true;
+  $('#watch-twitch-mode').value = watchDraft?.twitchMode || watch.twitchMode || 'chat';
   $('#watch-now').hidden = watch.enabled !== true;
-  $('#watch-status').textContent = watch.enabled ? `Verifica os canais aproximadamente a cada minuto, com o navegador aberto.${watch.lastCheckedAt ? ` Última consulta: ${formatTime(watch.lastCheckedAt)}.` : ' Aguardando a primeira consulta.'}` : 'Ative para abrir e fechar sessões conforme o status real da live.';
+  $('#watch-status').textContent = watch.enabled ? `Verifica as lives Kick aproximadamente a cada minuto. O popout Twitch mantém só o chat.${watch.lastCheckedAt ? ` Última consulta: ${formatTime(watch.lastCheckedAt)}.` : ''}` : 'Escolha os canais para abrir lives Kick e manter chats Twitch em segundo plano.';
   const legacyCount = state.schedules.filter(item => item.enabled).length;
   $('#legacy-schedules-note').hidden = !legacyCount;
   $('#legacy-schedules-note').textContent = `${legacyCount} agendamento(s) antigo(s) serão desativados ao ligar esta automação. Os registros serão preservados.`;
@@ -327,17 +339,23 @@ function renderSchedules(state) {
   updateTwitchSettingsVisibility(state);
   for (const id of watch.channelIds || []) {
     const sample = watch.statuses?.[id];
-    const node = card(channelLabel(id), sample?.live === true ? 'Ao vivo' : sample?.live === false ? 'Offline' : 'Status desconhecido');
-    node.append(element('p', sample?.checkedAt ? `Consulta: ${formatTime(sample.checkedAt)}` : 'Aguardando consulta.'));
+    const chatOnly = id.startsWith('twitch:') && watch.twitchMode !== 'irc';
+    const node = card(channelLabel(id), chatOnly ? 'Só chat' : sample?.live === true ? 'Ao vivo' : sample?.live === false ? 'Offline' : 'Status desconhecido');
+    node.append(element('p', chatOnly ? 'Popout de chat em aba inativa, sem player ou janela de popup.' : sample?.checkedAt ? `Consulta: ${formatTime(sample.checkedAt)}` : 'Aguardando consulta.'));
     list.append(node);
   }
 }
 function updateTwitchSettingsVisibility(state = lastState) {
   const selected = new Set(watchDraft?.channelIds || [...$('#watch-channels').querySelectorAll('input:checked')].map(input => input.value));
-  $('#twitch-chat-settings').hidden = !state?.twitchChat?.configured && !state?.channels.some(item => item.platform === 'twitch' && selected.has(item.id));
+  const hasTwitch = state?.channels.some(item => item.platform === 'twitch' && selected.has(item.id));
+  const mode = watchDraft?.twitchMode || state?.liveWatch?.twitchMode || 'chat';
+  $('#watch-twitch-mode-option').hidden = !hasTwitch;
+  $('#watch-twitch-note').hidden = !hasTwitch;
+  $('#watch-twitch-note').textContent = mode === 'irc' ? 'Conexão sem abas exige configurar o acesso ao chat abaixo.' : 'Usa o popout oficial e o login deste navegador. Não abre o vídeo da Twitch; a aba de chat continua visível na barra.';
+  $('#twitch-chat-settings').hidden = mode !== 'irc' || (!state?.twitchChat?.configured && !hasTwitch);
 }
 function updateWatchDraft() {
-  watchDraft = { enabled: $('#watch-enabled').checked, channelIds: [...$('#watch-channels').querySelectorAll('input:checked')].map(input => input.value) };
+  watchDraft = { enabled: $('#watch-enabled').checked, twitchMode: $('#watch-twitch-mode').value, channelIds: [...$('#watch-channels').querySelectorAll('input:checked')].map(input => input.value) };
   updateTwitchSettingsVisibility();
 }
 function renderAlerts(state) {
@@ -533,6 +551,7 @@ $('#start-all').addEventListener('click', () => command({ type: 'startAll' }));
 $('#stop-all').addEventListener('click', () => command({ type: 'stopAll' }));
 $('#bonus-cancel').addEventListener('click', resetBonus);
 $('#watch-enabled').addEventListener('change', updateWatchDraft);
+$('#watch-twitch-mode').addEventListener('change', updateWatchDraft);
 $('#watch-now').addEventListener('click', () => command({ type: 'watchNow' }));
 $('#connect-twitch-chat').addEventListener('click', async () => {
   const token = $('#twitch-token').value.trim();
