@@ -54,13 +54,17 @@ Baixe o novo pacote do seu navegador e extraia em uma pasta fixa. No Opera GX/Ch
 
 Se ainda houver pop-ups da versão anterior, clique em **Fechar todos** e depois em **Iniciar todos**. Não remova a extensão antes de atualizar, para evitar apagar seus dados locais.
 
-## Versão 0.10: Twitch só chat e lives Kick do PokeIdle
+## Versão 0.11: sincronização própria da Kick
 
 Depois de atualizar a extensão, recarregue também a página PokeIdle. Em **Personalizar painel**, habilite **PokeIdle**, carregue os canais do jogo e confira as plataformas identificadas.
 
 - A Twitch abre o popout de chat numa aba inativa e silenciosa, sem player ou janela de pop-up. A aba continua visível na barra do navegador.
 - Os canais Kick encontrados podem abrir a live quando houver um sinal confirmado de online, com tentativa de menor qualidade disponível. Um link isolado não confirma bônus nem estado de live.
 - Sessões Twitch antigas que a extensão ainda gerenciava como live são convertidas para o popout do mesmo canal. Uma aba pessoal reutilizada para outro endereço é preservada.
+
+No bloco Kick do PokeIdle, clique em **Sincronizar Kick**. O painel aguarda a leitura dos canais e a consulta de estado antes de apresentar o resultado. A sincronização Twitch conserva seu funcionamento e seus dados. Confira a última tentativa, o estado retornado e o horário permitido para uma nova consulta caso a Kick tenha limitado o acesso.
+
+Use **Automatizar Kick do PokeIdle** para habilitar ou desabilitar somente a participação automática Kick dessa origem. A automação geral do PokeIdle também precisa estar habilitada. Com qualquer um desses controles desligado, **Sincronizar Kick** atualiza os dados sem reativar a automação nem abrir sessões por essa origem. Sessões manuais e de outras origens são preservadas. Uma página sem canais Kick ou uma consulta indisponível não apaga a lista válida anterior.
 
 Para monitorar canais escolhidos, habilite **Automação de lives**, selecione os canais e clique em **Salvar automação**. O padrão Twitch é popout de chat; não é necessário configurar um token. A opção avançada IRC continua disponível para quem quer chat sem nenhuma aba e tem sua própria autorização Twitch.
 
@@ -70,4 +74,4 @@ Esta versão precisa de uma nova assinatura Mozilla para instalação Firefox pe
 
 ## Histórico das versões anteriores
 
-As versões 0.4 e 0.5 introduziram o player Kick e a preparação Android. A 0.6 acrescentou registros manuais, fila e horários; a 0.7 usava vídeo Twitch no modo PokeIdle. A 0.8 reorganizou o painel e a 0.9 acrescentou modos Kick por canal e IRC. Esses comportamentos históricos não são instruções para a versão atual: a 0.10 mantém Twitch sem player e substitui a configuração de horários pelo monitoramento. Os resultados de cada versão estão em [VALIDACAO.md](docs/VALIDACAO.md).
+As versões 0.4 e 0.5 introduziram o player Kick e a preparação Android. A 0.6 acrescentou registros manuais, fila e horários; a 0.7 usava vídeo Twitch no modo PokeIdle. A 0.8 reorganizou o painel e a 0.9 acrescentou modos Kick por canal e IRC. A 0.10 manteve Twitch somente em chat e acrescentou os canais Kick do PokeIdle; a 0.11 dá à Kick sincronização e controle próprios. Esses comportamentos históricos não são instruções para abrir vídeo Twitch na versão atual. Os resultados de cada versão estão em [VALIDACAO.md](docs/VALIDACAO.md).

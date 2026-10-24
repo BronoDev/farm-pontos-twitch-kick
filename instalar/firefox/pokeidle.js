@@ -68,6 +68,7 @@ function readPokeIdleTwitch(root) { return readPokeIdleChannels(root); }
   const widgetObservers = new Map();
   const listeners = [];
   const pendingReplies = [];
+  const pendingKickReplies = [];
   let rootObserver;
   let rootObserverTimeout;
   let snapshotTimer;
@@ -75,12 +76,14 @@ function readPokeIdleTwitch(root) { return readPokeIdleChannels(root); }
   let lastAttemptAt = 0;
   let lastSignature = '';
   let forcePending = false;
+  let globalPending = false;
+  let kickPending = false;
   let inFlight = false;
   let stopped = false;
 
-  function reply(accepted, callbacks = pendingReplies.splice(0)) {
+  function reply(accepted, callbacks = pendingReplies.splice(0), reason) {
     for (const sendResponse of callbacks) {
-      try { sendResponse({ accepted }); } catch { /* A aba solicitante pode ter sido fechada. */ }
+      try { sendResponse({ accepted, ...(reason ? { reason } : {}) }); } catch { /* A aba solicitante pode ter sido fechada. */ }
     }
   }
   function cleanup() {
@@ -94,6 +97,7 @@ function readPokeIdleTwitch(root) { return readPokeIdleChannels(root); }
     for (const [target, event, handler] of listeners) target.removeEventListener(event, handler);
     api.runtime.onMessage?.removeListener?.(onRuntimeMessage);
     reply(false);
+    reply(false, pendingKickReplies.splice(0), 'not-ready');
   }
   function liveRoute() {
     if (!allowed()) { cleanup(); return false; }
@@ -135,34 +139,61 @@ function readPokeIdleTwitch(root) { return readPokeIdleChannels(root); }
   }
   async function flush() {
     snapshotTimer = undefined;
-    if (!liveRoute()) return;
-    if (inFlight) { schedule(forcePending, MIN_INTERVAL); return; }
-    connectWidgets();
-    const snapshot = readPokeIdleChannels(document);
-    if (!snapshot.ready) { reply(false); return; }
-    const signature = JSON.stringify(snapshot);
-    const force = forcePending;
-    forcePending = false;
-    if (!force && signature === lastSignature) return;
-    lastAttemptAt = Date.now();
-    inFlight = true;
-    const snapshotReplies = pendingReplies.splice(0);
+    if (!liveRoute() || inFlight || (!globalPending && !kickPending)) return;
+    const kickOnly = !globalPending && kickPending;
+    const snapshotReplies = kickOnly ? pendingKickReplies.splice(0) : pendingReplies.splice(0);
+    if (kickOnly) kickPending = false;
+    else globalPending = false;
     let accepted = false;
+    let reason;
+    let sent = false;
     try {
-      const result = await api.runtime.sendMessage({ type: 'pokeidleSnapshot', snapshot });
+      connectWidgets();
+      const all = readPokeIdleChannels(document);
+      const channels = kickOnly ? all.channels.filter(channel => channel.platform === 'kick') : all.channels;
+      if (!channels.length) { if (kickOnly) reason = all.ready ? 'no-channels' : 'not-ready'; return; }
+      const snapshot = kickOnly ? { ready: true, channels, ruleText: '' } : all;
+      const signature = JSON.stringify(snapshot);
+      if (!kickOnly) {
+        const force = forcePending;
+        forcePending = false;
+        if (!force && signature === lastSignature) return;
+      }
+      lastAttemptAt = Date.now();
+      inFlight = true;
+      sent = true;
+      const result = await api.runtime.sendMessage({ type: 'pokeidleSnapshot', ...(kickOnly ? { platform: 'kick' } : {}), snapshot });
       if (stopped) return;
-      if (!result?.ok || result.state?.accepted !== true) { cleanup(); return; }
-      lastSignature = signature;
+      if (!result?.ok || result.state?.accepted !== true) {
+        if (kickOnly) reason = 'not-ready';
+        else cleanup();
+        return;
+      }
+      // Uma leitura Kick isolada não confirma que a última lista Twitch foi enviada.
+      if (!kickOnly) lastSignature = signature;
       accepted = true;
-    } catch { cleanup(); }
-    finally { inFlight = false; reply(accepted, snapshotReplies); }
+    } catch {
+      // A sincronização isolada da Kick não deve encerrar o acompanhamento
+      // Twitch se o canal de mensagens falhar temporariamente.
+      if (kickOnly) reason = 'not-ready';
+      else cleanup();
+    }
+    finally {
+      if (sent) inFlight = false;
+      reply(accepted, snapshotReplies, reason);
+      if (!stopped && (globalPending || kickPending)) armSnapshot(0);
+    }
   }
-  function schedule(force = false, debounce = 700) {
-    if (!liveRoute()) return;
-    forcePending ||= force;
-    if (snapshotTimer !== undefined) return;
+  function armSnapshot(debounce) {
+    if (snapshotTimer !== undefined || inFlight || stopped) return;
     const wait = Math.max(debounce, MIN_INTERVAL - (Date.now() - lastAttemptAt));
     snapshotTimer = setTimeout(() => { void flush(); }, wait);
+  }
+  function schedule(force = false, debounce = 700, platform) {
+    if (!liveRoute()) return;
+    if (platform === 'kick') kickPending = true;
+    else { globalPending = true; forcePending ||= force; }
+    armSnapshot(debounce);
   }
   function listen(target, event, handler) {
     target.addEventListener(event, handler);
@@ -185,8 +216,9 @@ function readPokeIdleTwitch(root) { return readPokeIdleChannels(root); }
   listen(document, 'visibilitychange', () => { if (liveRoute() && !document.hidden) { connectWidgets(); schedule(true, 700); } });
   function onRuntimeMessage(message, sender, sendResponse) {
     if (message?.type !== 'requestPokeIdleSnapshot' || sender?.id !== api.runtime.id || !liveRoute()) return false;
-    pendingReplies.push(sendResponse);
-    connectWidgets(); schedule(true, 0);
+    if (message.platform !== undefined && message.platform !== 'kick') return false;
+    (message.platform === 'kick' ? pendingKickReplies : pendingReplies).push(sendResponse);
+    connectWidgets(); schedule(true, 0, message.platform);
     return true;
   }
   api.runtime.onMessage?.addListener(onRuntimeMessage);

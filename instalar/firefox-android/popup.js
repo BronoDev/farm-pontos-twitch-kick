@@ -192,8 +192,47 @@ function resetChannelFilters() {
 const POKEIDLE_OWNER = 'pokeidle:twitch';
 function sourceLive(item, state) {
   const sample = state.pokeidle?.kickStatuses?.[`kick:${item.name}`];
-  if (item.platform === 'kick' && Number.isFinite(sample?.checkedAt) && Date.now() >= sample.checkedAt && Date.now() - sample.checkedAt <= 180000 && typeof sample.live === 'boolean') return sample.live;
+  if (item.platform === 'kick' && sample) return Number.isFinite(sample.checkedAt) && Date.now() >= sample.checkedAt && Date.now() - sample.checkedAt <= 180000 && typeof sample.live === 'boolean' ? sample.live : null;
   return typeof item.live === 'boolean' ? item.live : null;
+}
+function renderKickSync(state) {
+  const source = state.pokeidle || {};
+  const sync = source.kickSync || {};
+  const channels = (source.channels || []).filter(item => item.platform === 'kick');
+  const observed = Number.isFinite(sync.observedAt) && sync.observedAt > 0;
+  const fresh = observed && sync.connected === true && Date.now() >= sync.observedAt && Date.now() - sync.observedAt <= 180000;
+  const enabled = sync.enabled !== false && source.enabled !== false;
+  const active = Object.entries(state.sessions).filter(([id, session]) => id.startsWith('kick:') && session.ownerIds?.includes(POKEIDLE_OWNER));
+  const queued = state.queue.filter(id => id.startsWith('kick:') && state.queueSources?.[id]?.includes(POKEIDLE_OWNER));
+  const online = channels.filter(item => sourceLive(item, state) === true).length;
+  const badge = $('#kick-sync-badge');
+  badge.textContent = !enabled ? 'Desativada' : state.automationPaused ? 'Pausada' : !fresh ? 'Aguardando leitura' : sync.status === 'rate-limited' ? 'Em espera' : sync.status === 'partial' ? 'Conferir conexão' : 'Lista recebida';
+  badge.classList.toggle('connected', enabled && fresh && sync.status === 'ok');
+  $('#pokeidle-kick-enabled').checked = sync.enabled !== false;
+  $('#kick-sync-summary').textContent = `${channels.length} canais · ${online} com sinal de live · ${active.length} sessões automáticas · ${queued.length} na fila`;
+  const messages = {
+    idle: 'Sincronize para ler os canais Kick do jogo e consultar quais estão ao vivo.',
+    ok: 'Consulta da Kick concluída. Confira as sessões e os limites no painel.',
+    partial: 'Alguns canais estão com status desconhecido. Novas sessões aguardam confirmação.',
+    'no-channels': 'Nenhum canal Kick foi encontrado nesta leitura. Abra a lista no PokeIdle; a lista anterior foi preservada.',
+    'source-unavailable': 'Não foi possível ler a página. Abra o PokeIdle, carregue a lista e tente novamente.',
+    'rate-limited': 'A Kick limitou as consultas. A extensão aguardará antes de tentar novamente.'
+  };
+  $('#kick-sync-status').textContent = messages[sync.status] || messages.idle;
+  const times = [`Lista Kick: ${observed ? formatTime(sync.observedAt) : 'ainda não recebida'}`];
+  if (sync.lastAttemptAt) times.push(`última sincronização solicitada: ${formatTime(sync.lastAttemptAt)}`);
+  if (sync.lastSuccessAt) times.push(`última resposta válida da Kick: ${formatTime(sync.lastSuccessAt)}`);
+  if (sync.nextRetryAt > Date.now()) times.push(`nova consulta permitida após: ${formatTime(sync.nextRetryAt)}`);
+  $('#kick-sync-timing').textContent = times.join(' · ');
+  let warning = '';
+  if (source.enabled === false) warning = 'Ative a automação geral do PokeIdle para permitir aberturas automáticas. Sincronizar Kick apenas atualiza os dados.';
+  else if (sync.enabled === false) warning = 'A automação Kick está desligada. Sincronizar atualiza a lista e o status sem reativá-la; a Twitch continua com sua configuração atual.';
+  else if (state.automationPaused) warning = 'A automação está pausada. Sincronizar não retoma nem abre sessões.';
+  else if (sync.errorCode === 'forbidden') warning = 'A Kick recusou a consulta. O status fica desconhecido e haverá uma espera antes da próxima tentativa.';
+  else if (sync.nextRetryAt > Date.now()) warning = `Aguardando até ${formatTime(sync.nextRetryAt)} para consultar novamente. Sincronizar respeita essa espera.`;
+  else if (observed && !fresh) warning = 'A lista Kick está desatualizada ou a página foi fechada. Sincronize antes de iniciar novas sessões automáticas.';
+  $('#kick-sync-warning').hidden = !warning;
+  $('#kick-sync-warning').textContent = warning;
 }
 function renderPokeIdleChannels(state) {
   const list = $('#pokeidle-channels');
@@ -218,15 +257,17 @@ function renderPokeIdle(state) {
   const source = state.pokeidle || {};
   const channels = Array.isArray(source.channels) ? source.channels : [];
   const twitch = channels.filter(item => item.platform !== 'kick');
-  const eligible = channels.filter(item => sourceLive(item, state) === true && (item.platform === 'kick' || (!state.liveWatch?.enabled && item.bonus && item.missing)));
+  const eligible = channels.filter(item => sourceLive(item, state) === true && (item.platform === 'kick' ? source.kickSync?.enabled !== false : !state.liveWatch?.enabled && item.bonus && item.missing));
   const active = Object.entries(state.sessions).filter(([, session]) => session.ownerIds?.includes(POKEIDLE_OWNER));
   const queued = state.queue.filter(id => state.queueSources?.[id]?.includes(POKEIDLE_OWNER));
   const observed = Number.isFinite(source.observedAt) && source.observedAt > 0;
   const stale = observed && Date.now() - source.observedAt > 180000;
-  $('#pokeidle-setup').hidden = observed;
-  $('#pokeidle-configured').hidden = !observed;
-  const connected = observed && source.connected === true && !stale;
-  $('#pokeidle-connection').textContent = connected ? 'Conectado' : observed ? 'Aguardando leitura' : 'Não conectado';
+  const kickObserved = Number.isFinite(source.kickSync?.observedAt) && source.kickSync.observedAt > 0;
+  const configured = observed || kickObserved;
+  $('#pokeidle-setup').hidden = configured;
+  $('#pokeidle-configured').hidden = !configured;
+  const connected = (observed && source.connected === true && !stale) || (kickObserved && source.kickSync.connected === true && Date.now() - source.kickSync.observedAt <= 180000);
+  $('#pokeidle-connection').textContent = connected ? 'Conectado' : configured ? 'Aguardando leitura' : 'Não conectado';
   $('#pokeidle-connection').classList.toggle('connected', connected);
   $('#pokeidle-enabled').checked = source.enabled !== false;
   $('#pokeidle-enabled').closest('label').hidden = false;
@@ -254,6 +295,7 @@ function renderPokeIdle(state) {
   else if (observed && source.connected === true && !stale && eligible.some(item => !state.sessions[`${item.platform || 'twitch'}:${item.name}`])) waiting = 'Há canais elegíveis sem sessão automática. Sincronize novamente e confira os limites.';
   $('#pokeidle-waiting').hidden = !waiting;
   $('#pokeidle-waiting').textContent = waiting;
+  renderKickSync(state);
   renderPokeIdleChannels(state);
 }
 function renderBonuses(state) {
@@ -437,6 +479,11 @@ async function command(message) {
   if (busy) return false;
   busy = true;
   errorBox.hidden = true;
+  if (message.type === 'syncPokeIdleKick') {
+    $('#kick-sync-panel').setAttribute('aria-busy', 'true');
+    $('#refresh-pokeidle-kick').textContent = 'Sincronizando Kick…';
+    $('#kick-sync-status').textContent = 'Lendo a lista do PokeIdle e consultando a Kick…';
+  }
   document.querySelectorAll('button, select, input, textarea').forEach(control => { control.disabled = true; });
   try {
     const result = await api.runtime.sendMessage(message);
@@ -450,6 +497,8 @@ async function command(message) {
     return false;
   } finally {
     busy = false;
+    $('#kick-sync-panel').removeAttribute('aria-busy');
+    $('#refresh-pokeidle-kick').textContent = 'Sincronizar Kick';
     document.querySelectorAll('button, select, input, textarea').forEach(control => { control.disabled = false; });
   }
 }
@@ -544,6 +593,8 @@ for (const selector of ['#channel-search', '#channel-filter']) {
 }
 $('#open-pokeidle').addEventListener('click', () => command({ type: 'openPokeIdle' }));
 $('#refresh-pokeidle').addEventListener('click', () => command({ type: 'refreshPokeIdle' }));
+$('#refresh-pokeidle-kick').addEventListener('click', () => command({ type: 'syncPokeIdleKick' }));
+$('#pokeidle-kick-enabled').addEventListener('change', event => command({ type: 'setPokeIdleKick', enabled: event.target.checked }));
 $('#pokeidle-enabled').addEventListener('change', event => command({ type: 'setPokeIdle', enabled: event.target.checked }));
 $('#pokeidle-filter').addEventListener('change', () => { if (lastState) renderPokeIdleChannels(lastState); });
 $('#kick-live').addEventListener('change', event => command({ type: 'setKickLive', enabled: event.target.checked }));

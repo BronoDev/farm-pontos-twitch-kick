@@ -127,3 +127,14 @@ Consulte [AUTOMACAO.md](AUTOMACAO.md) para configurar o OAuth oficial e os canai
 - As regressões cobrem popout Twitch sem player, migração das antigas abas gerenciadas, Kick importada, estados desconhecidos/offline, pausas e preferência Kick na fila sem exceder o limite. O fluxo misto passou no Chromium em 320/600/1280px; desktop, modos Kick, integração PokeIdle e IRC explícito também passaram nos cenários informados.
 - Os nove testes do leitor e sua verificação Chromium passaram. O HTML original fornecido contém somente Twitch; a marcação Kick adicional é **sintética**. Esses resultados não comprovam o DOM atual do PokeIdle nem respostas reais dos serviços.
 - Não houve validação de login pessoal, reprodução/qualidade remota, consumo ou crédito de pontos/XP, nem execução nativa Firefox/Opera GX/Android. Os ZIPs continuam sem assinatura; uma instalação Firefox permanente exige nova assinatura Mozilla.
+
+## Versão 0.11: sincronização Kick independente
+
+- `npm run package`, `npm run check` e **215 testes Node** passaram, sem falhas ou skips. As quatro distribuições 0.11.0 e seus ZIPs correspondem às fontes. Os scripts de player continuam restritos à Kick e o diagnóstico Twitch foi preservado.
+- Os testes cobrem sincronização Kick separada da leitura Twitch, preservação de dados ausentes, controles e pausas respeitados na leitura manual, consultas compartilhadas, cache com horário original e espera após erros. A regressão de API offline seguida de estado desconhecido verifica que um marcador antigo da página não reabre a live.
+- Os nove testes Node do leitor e sua verificação Chromium passaram. Os fluxos Chromium também passaram para desktop em cinco tamanhos, PokeIdle em 320/360px, roteamento Twitch/Kick em 320/600/1280px com limite de três sessões, IRC em três tamanhos e modos Kick em cinco tamanhos.
+- O fluxo dedicado de sincronização Kick passou em 320/600/1280px. Uma resposta API 403 foi exibida como status a verificar, apesar de um marcador antigo de live na página; somente o canal com confirmação atual entrou na contagem de lives.
+- `web-ext` 10.8.0 validou Firefox desktop 142/MV3 e Android 142/MV2 com zero erros, avisos ou observações. O aviso sobre a configuração de atualização da própria ferramenta não afetou a validação. Os dois painéis distribuídos carregaram seu módulo ESM e permitiram ativar o histórico com APIs simuladas.
+- `npm run mozilla:check` conferiu o plano 0.11.0 e relatou `WEB_EXT_API_KEY` e `WEB_EXT_API_SECRET` ausentes. Não houve envio ou assinatura desta versão; a instalação Firefox permanente exige nova assinatura Mozilla.
+
+As APIs de navegador e as respostas dos serviços foram simuladas. O HTML original fornecido contém somente Twitch; a marcação Kick adicional dos testes é **sintética**. Não houve validação do DOM atual do PokeIdle, login pessoal, reprodução/qualidade remota, consumo, crédito de pontos/XP ou execução nativa Firefox/Opera GX/Android.

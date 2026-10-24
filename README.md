@@ -58,6 +58,10 @@ A Twitch elegível usa apenas chat. Canais Kick são identificados por seus link
 
 Canais Kick desta origem usam live no modo padrão; escolhas individuais explícitas de chat ou live são preservadas. A integração exige uma leitura recente do PokeIdle para novos inícios; origem fechada ou desatualizada não é tratada como offline para sessões já abertas.
 
+Na seção Kick, use **Sincronizar Kick** para ler seus canais no jogo e aguardar a consulta de estado antes de mostrar o resultado. Essa ação conserva a lista e a idade da leitura Twitch. A opção **Automatizar Kick do PokeIdle** controla somente as sessões Kick dessa origem, respeitando também a automação geral do PokeIdle. Com qualquer um desses controles desligado, sincronizar apenas atualiza os dados, sem reativar a automação nem abrir sessões por essa origem. O painel mostra a última tentativa, o resultado e eventual espera para consultar novamente.
+
+Consultas Kick próximas reutilizam resultados recentes; bloqueios e limites de acesso aplicam uma espera antes de repetir a consulta. A idade mostrada continua sendo a da consulta original. Dados ausentes ou erros não apagam uma lista válida nem voltam a usar um marcador antigo de live para abrir uma sessão sem confirmação atual.
+
 O texto original das regras é preservado como informação da página, sem converter números como `+15%` e `+2,5%` em XP creditado. Remover um canal impede sua reimportação automática; adicioná-lo manualmente permite incluí-lo novamente. Consulte [POKEIDLE.md](docs/POKEIDLE.md).
 
 ## Fila, pausas e limites

@@ -109,6 +109,126 @@ with sync_playwright() as p:
     assert page.evaluate('snapshots.length') == 4
     page.close()
 
+    # Pedir somente Kick não envia os dados Twitch nem encerra seu leitor se
+    # não houver Kick. A observação Twitch continua funcionando normalmente.
+    page = fixture(context)
+    page.wait_for_function('snapshots.length===1')
+    page.evaluate('''() => {
+      window.kickEmptyReply=null;
+      window.kickEmptyReturned=refreshListener({type:'requestPokeIdleSnapshot',platform:'kick'},
+        {id:'local-test'},reply=>{kickEmptyReply=reply});
+    }''')
+    assert page.evaluate('kickEmptyReturned') is True
+    page.wait_for_function('kickEmptyReply?.accepted===false')
+    assert page.evaluate('kickEmptyReply.reason') == 'no-channels'
+    assert page.evaluate('messages.length') == 1
+    assert page.evaluate('activeIntervals.size') == 1
+    page.evaluate('document.querySelector("a.tw-canal").classList.remove("ao-vivo")')
+    page.wait_for_function('snapshots.length===2')
+    assert page.evaluate('snapshots.at(-1).channels[0].live') is False
+    assert page.evaluate('messages.at(-1).platform') is None
+    page.close()
+
+    # Pedidos Kick concorrentes são agrupados e só respondem após aceite. Um
+    # refresh global pedido durante o envio aguarda sua vez e mantém seu ACK.
+    page = fixture(context, body=mixed_html)
+    page.wait_for_function('snapshots.length===1')
+    page.evaluate('''() => {
+      const send=browser.runtime.sendMessage;
+      browser.runtime.sendMessage=async message=>{
+        const result=await send(message);
+        if(message.platform==='kick')await new Promise(resolve=>{window.releaseKick=resolve});
+        return result;
+      };
+      window.kickReplies=[];window.globalAfterKickReply=null;
+      for(let i=0;i<2;i++)refreshListener({type:'requestPokeIdleSnapshot',platform:'kick'},
+        {id:'local-test'},reply=>{kickReplies.push(reply)});
+    }''')
+    page.wait_for_function('messages.length===2 && typeof releaseKick === "function"')
+    assert page.evaluate('kickReplies.length') == 0
+    assert page.evaluate('messages[1].platform') == 'kick'
+    assert page.evaluate('messages[1].snapshot.channels.every(item=>item.platform==="kick")')
+    assert page.evaluate('messages[1].snapshot.ruleText') == ''
+    assert page.evaluate('sentAt[1]-sentAt[0]') >= 1990
+    page.evaluate('''() => {
+      refreshListener({type:'requestPokeIdleSnapshot'},{id:'local-test'},reply=>{globalAfterKickReply=reply});
+      releaseKick();
+    }''')
+    page.wait_for_function('kickReplies.length===2 && kickReplies.every(reply=>reply.accepted===true)')
+    page.wait_for_function('globalAfterKickReply?.accepted===true')
+    assert page.evaluate('messages.length') == 3
+    assert page.evaluate('messages[2].platform') is None
+    assert page.evaluate('messages[2].snapshot.channels.some(item=>item.platform==="twitch")')
+    assert page.evaluate('sentAt[2]-sentAt[1]') >= 1990
+    page.close()
+
+    # O envio Kick isolado não substitui a assinatura da última leitura global.
+    # O link fora de widgets muda a lista sem disparar o observador local; a
+    # mutação seguinte no widget precisa publicar a leitura global nova.
+    page = fixture(context, body=mixed_html)
+    page.wait_for_function('snapshots.length===1')
+    page.evaluate('''() => {
+      const link=document.createElement('a');link.href='https://kick.com/novo_fora_widget';
+      document.body.append(link);window.kickOnlyReply=null;
+      refreshListener({type:'requestPokeIdleSnapshot',platform:'kick'},{id:'local-test'},reply=>{kickOnlyReply=reply});
+    }''')
+    page.wait_for_function('kickOnlyReply?.accepted===true')
+    assert page.evaluate('messages.length') == 2
+    assert page.evaluate('messages[1].platform') == 'kick'
+    page.evaluate('''() => {
+      const anchor=document.querySelector('a.tw-canal');
+      anchor.setAttribute('class',anchor.getAttribute('class'));
+    }''')
+    page.wait_for_function('messages.length===3')
+    assert page.evaluate('messages[2].platform') is None
+    assert page.evaluate('messages[2].snapshot.channels.some(item=>item.name==="novo_fora_widget")')
+    page.close()
+
+    # Uma falha só da leitura Kick (rejeição ou transporte) não desliga o
+    # heartbeat/observação Twitch. O próximo refresh global mantém seu ACK.
+    for failure in ['rejected', 'transport']:
+        page = fixture(context, body=mixed_html)
+        page.wait_for_function('snapshots.length===1')
+        page.evaluate('''failure => {
+          const send=browser.runtime.sendMessage;
+          browser.runtime.sendMessage=async message=>{
+            if(message.platform==='kick'){
+              if(failure==='transport')throw new Error('falha transitória de teste');
+              return {ok:true,state:{accepted:false}};
+            }
+            return send(message);
+          };
+          window.kickFailedReply=null;
+          refreshListener({type:'requestPokeIdleSnapshot',platform:'kick'},
+            {id:'local-test'},reply=>{kickFailedReply=reply});
+        }''', failure)
+        page.wait_for_function('kickFailedReply?.accepted===false')
+        assert page.evaluate('kickFailedReply.reason') == 'not-ready'
+        assert page.evaluate('activeIntervals.size') == 1
+        page.evaluate('''() => {
+          window.globalRecoveryReply=null;
+          refreshListener({type:'requestPokeIdleSnapshot'},
+            {id:'local-test'},reply=>{globalRecoveryReply=reply});
+        }''')
+        page.wait_for_function('globalRecoveryReply?.accepted===true')
+        assert page.evaluate('snapshots.length') == 2
+        assert page.evaluate('messages.at(-1).platform') is None
+        page.close()
+
+    # Se a rota sai antes do throttle, os callbacks Kick também são liberados.
+    page = fixture(context, body=mixed_html)
+    page.wait_for_function('snapshots.length===1')
+    page.evaluate('''() => {
+      window.kickCancelledReply=null;
+      refreshListener({type:'requestPokeIdleSnapshot',platform:'kick'},
+        {id:'local-test'},reply=>{kickCancelledReply=reply});
+      window.dispatchEvent(new Event('pagehide'));
+    }''')
+    assert page.evaluate('kickCancelledReply.accepted') is False
+    assert page.evaluate('activeIntervals.size') == 0
+    assert page.evaluate('messages.length') == 1
+    page.close()
+
     # Fixture mista sintética: plataforma explícita e links Kick sem status inventado.
     page = fixture(context, body=mixed_html)
     page.wait_for_function('snapshots.length===1')
@@ -197,4 +317,4 @@ with sync_playwright() as p:
         page.close()
     assert not errors, errors
     browser.close()
-    print('PASS: fixture real Twitch16/8 e fixture mista sintética; Kick por URL sem inventar live/bônus, observers locais/SPA/heartbeat, debounce/throttle, refresh, loading e cleanup. Chromium local; sem contas ou cliques.')
+    print('PASS: fixture real Twitch16/8 e mista sintética; Kick-only sem alterar/envio Twitch, ACK após aceite, agrupamento/serialização e assinatura global preservada; URL/observer/SPA/heartbeat/throttle/loading/cleanup. Chromium local; sem contas ou cliques.')

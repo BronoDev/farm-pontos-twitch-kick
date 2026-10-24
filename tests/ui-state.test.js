@@ -50,6 +50,9 @@ test('PokeIdle aparece após leitura válida, sem exigir conexão atual, e respe
   assert.equal(uiPanelVisible({ pokeidle: { observedAt: 1800000000000, connected: false } }, 'pokeidle'), true);
   assert.equal(uiPanelVisible({ pokeidle: { observedAt: 1800000000000 }, uiPreferences: { panels: { pokeidle: false } } }, 'pokeidle'), false);
   assert.equal(uiPanelVisible({ uiPreferences: { panels: { pokeidle: true } } }, 'pokeidle'), true);
+  const kickOnly = { pokeidle: { observedAt: null, kickSync: { observedAt: 1800000000000, connected: false } } };
+  assert.equal(uiPanelVisible(kickOnly, 'pokeidle'), true, 'a sincronização exclusiva Kick continua acessível ao reabrir o painel');
+  assert.equal(uiPanelVisible({ ...kickOnly, uiPreferences: { panels: { pokeidle: false } } }, 'pokeidle'), false);
 });
 
 test('ocultar PokeIdle persiste sem desativar automação nem retirar canais ou sessões automáticas', async t => {

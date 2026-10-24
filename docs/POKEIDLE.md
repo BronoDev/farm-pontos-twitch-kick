@@ -1,6 +1,6 @@
 # Canais Twitch e Kick do PokeIdle
 
-A versão 0.10 identifica as plataformas pelos links carregados em `https://pokeidle.io/app`. A Twitch usa somente o popout de chat em segundo plano. Os canais Kick encontrados podem abrir a live oficial com áudio silenciado e tentativa de menor qualidade disponível.
+A versão 0.11 identifica as plataformas pelos links carregados em `https://pokeidle.io/app`. A Twitch mantém sua sincronização e usa somente o popout de chat em segundo plano. A Kick tem sincronização própria e pode abrir a live oficial com áudio silenciado e tentativa de menor qualidade disponível.
 
 ## Usar
 
@@ -11,6 +11,16 @@ A versão 0.10 identifica as plataformas pelos links carregados em `https://poke
 5. Confira as abas e a fila. O padrão global é de três abas, ajustável no painel. Mais abas e vídeos usam mais recursos.
 
 A aba de chat Twitch fica inativa e silenciosa, sem player. Ela continua visível na barra do navegador; não é uma página completamente invisível. O modo IRC sem nenhuma aba é uma opção avançada separada, descrita em [AUTOMACAO.md](AUTOMACAO.md).
+
+## Sincronizar somente a Kick
+
+Use **Sincronizar Kick** no bloco da plataforma. A ação aguarda a leitura dos canais Kick na página e a consulta do estado das lives antes de devolver o resultado ao painel. A lista, os sinais e a idade da leitura Twitch são preservados.
+
+O bloco mostra a última tentativa e o resultado da sincronização, incluindo ausência de canais, origem indisponível ou espera após uma consulta limitada. Uma página incompleta não apaga uma lista Kick válida nem torna seus dados antigos recentes. Mantenha o jogo aberto e sua lista carregada para novos inícios por essa origem.
+
+**Automatizar Kick do PokeIdle** controla apenas a participação Kick da integração. A opção geral **Automatizar canais do PokeIdle** continua valendo. Desabilitar a Kick conserva os chats Twitch, as sessões manuais e as participações de outras automações.
+
+A sincronização manual funciona com esses controles desligados: atualiza a lista e o estado das lives sem reativar a automação nem abrir sessões por essa origem. Também respeita **Fechar todos** e as pausas de cada canal.
 
 ## O que vem da página
 
@@ -49,6 +59,10 @@ A atualização também corrige uma configuração da versão 0.9 que desativava
 Mantenha a página PokeIdle aberta, com a lista carregada. Alterações são agrupadas para reduzir trabalho, e uma leitura periódica redescobre links carregados mais tarde. Uma leitura com mais de três minutos ou uma origem fechada impede novos inícios por essa integração até receber dados recentes.
 
 Um widget vazio, ausente ou incompleto não informa que todos os canais ficaram offline. As sessões já abertas não são fechadas apenas por falta de atualização. O navegador pode atrasar a leitura e os alarmes em segundo plano, principalmente no Android.
+
+O monitoramento Kick reutiliza resultados de até um minuto, e consultas simultâneas compartilham o mesmo pedido, sem alterar o horário original da amostra. Uma recusa de acesso impõe cinco minutos de espera; limites de consultas respeitam o prazo informado pela Kick entre um e dez minutos; outras falhas aguardam um minuto. **Sincronizar Kick** também respeita essas esperas. O painel informa o motivo e a próxima tentativa quando disponíveis.
+
+Uma resposta recente desconhecida prevalece sobre um marcador anterior de live: não reabre uma sessão usando aquele sinal antigo como confirmação nova.
 
 O texto da regra do jogo é preservado como informação da origem, incluindo `+15%` e `+2,5%` quando presentes. Esses sinais não são recibos de XP. A extensão não consulta uma API de saldo do PokeIdle e não executa botões ou comandos de moderação da página. Confira o saldo e as regras reais no serviço.
 

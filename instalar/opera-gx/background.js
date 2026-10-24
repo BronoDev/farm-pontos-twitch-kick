@@ -1,11 +1,12 @@
 import { createController } from './core.js';
-import { isPokeIdleUrl, normalizePokeIdle, pokeIdleFresh, pokeIdleExcluded, POKEIDLE_OWNER } from './pokeidle-state.js';
-import { normalizeLiveWatch, collectLiveWatch } from './live-watch.js';
+import { isPokeIdleUrl, normalizePokeIdle, pokeIdleKickFresh, pokeIdleExcluded, POKEIDLE_OWNER } from './pokeidle-state.js';
+import { normalizeLiveWatch, collectLiveWatch, createKickQueries } from './live-watch.js';
 import { createTwitchChat } from './twitch-chat.js';
 
 const api = globalThis.browser ?? globalThis.chrome;
 const twitchChat = createTwitchChat(api);
 const execute = createController(api, { twitchChat });
+const kickQueries = createKickQueries();
 // Serializa mensagens para evitar abas duplicadas e perda de atualizações.
 let queue = Promise.resolve();
 function enqueue(message, sender = {}) {
@@ -14,7 +15,7 @@ function enqueue(message, sender = {}) {
   return result;
 }
 function needsLivePolling(state) {
-  return state.liveWatch.enabled || (state.pokeidle.enabled && (
+  return state.liveWatch.enabled || (state.pokeidle.enabled && state.pokeidle.kickSync.enabled && (
     state.pokeidle.channels.some(item => item.platform === 'kick')
     || Object.entries(state.sessions).some(([id, session]) => id.startsWith('kick:') && session.ownerIds?.includes(POKEIDLE_OWNER))
   ));
@@ -28,37 +29,48 @@ api.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // para que a resposta do content script não dependa da própria operação bloqueada.
   let action;
   if (message.type === 'refreshPokeIdle' && (fromPanel || !sender.tab)) action = refreshPokeIdle().then(() => enqueue(message, sender));
+  else if (message.type === 'syncPokeIdleKick') action = syncPokeIdleKick();
   else if (message.type === 'pokeidleSnapshot') action = enqueue(message, sender).then(state => {
-    if (state.accepted) void pollLiveWatch().catch(() => {});
+    if (state.accepted && message.platform !== 'kick') void pollLiveWatch().catch(() => {});
     return state;
   });
   else if (message.type === 'configureTwitchChat') action = twitchChat.configure({ token: message.token }).then(() => pollLiveWatch()).then(() => enqueue({ type: 'status' }));
   else if (message.type === 'disconnectTwitchChat') action = twitchChat.disconnect({ forget: message.forget === true }).then(() => enqueue({ type: 'status' }));
   else if (message.type === 'watchNow') action = pollLiveWatch({ force: true }).then(() => enqueue({ type: 'status' }));
   else if (message.type === 'setLiveWatch') action = enqueue(message, sender).then(() => pollLiveWatch()).then(() => enqueue({ type: 'status' }));
-  else if (['startAll', 'resumeAutomation', 'setPokeIdle'].includes(message.type)) action = enqueue(message, sender).then(state => needsLivePolling(state) ? pollLiveWatch().then(() => enqueue({ type: 'status' })) : state);
+  else if (['startAll', 'resumeAutomation', 'setPokeIdle', 'setPokeIdleKick'].includes(message.type)) action = enqueue(message, sender).then(state => needsLivePolling(state) ? pollLiveWatch().then(() => enqueue({ type: 'status' })) : state);
   else action = enqueue(message, sender);
   action.then(state => sendResponse({ ok: true, state }), error => sendResponse({ ok: false, error: message.type === 'configureTwitchChat' ? 'Não foi possível autenticar o chat Twitch. Confira o token e suas permissões.' : error.message }));
   return true;
 });
 
 let polling;
-async function pollLiveWatch({ force = false } = {}) {
-  if (polling) return polling;
+async function pollLiveWatch({ force = false, includePokeIdleKick = false } = {}) {
+  if (polling) {
+    await polling;
+    if (!force && !includePokeIdleKick) return;
+  }
   polling = (async () => {
     const raw = await api.storage.local.get(['channels', 'liveWatch', 'automationPaused', 'pokeidle', 'sessions']);
     const channels = Array.isArray(raw.channels) ? raw.channels : [];
-    if (raw.automationPaused === true && !force) return;
+    if (raw.automationPaused === true && !force && !includePokeIdleKick) return;
     const watch = normalizeLiveWatch(raw.liveWatch, channels);
     const source = normalizePokeIdle(raw.pokeidle);
-    const sourceIds = source.enabled ? channels.filter(item => item.platform === 'kick' && !pokeIdleExcluded(source, item.id)
-      && ((pokeIdleFresh(source, Date.now()) && source.channels.some(entry => entry.platform === 'kick' && entry.name === item.name)) || raw.sessions?.[item.id]?.ownerIds?.includes(POKEIDLE_OWNER))).map(item => item.id) : [];
-    const ids = [...new Set([...(watch.enabled ? watch.channelIds : []), ...sourceIds])];
+    const sourceIds = (includePokeIdleKick || (source.enabled && source.kickSync.enabled)) ? channels.filter(item => item.platform === 'kick' && !pokeIdleExcluded(source, item.id)
+      && (((includePokeIdleKick || pokeIdleKickFresh(source, Date.now())) && source.channels.some(entry => entry.platform === 'kick' && entry.name === item.name)) || raw.sessions?.[item.id]?.ownerIds?.includes(POKEIDLE_OWNER))).map(item => item.id) : [];
+    const watchIds = watch.enabled ? watch.channelIds.filter(id => !includePokeIdleKick || id.startsWith('kick:')) : [];
+    const ids = [...new Set([...watchIds, ...sourceIds])];
     if (!ids.length) return;
     const state = { channels, liveWatch: { ...watch, enabled: true, channelIds: ids } };
-    const statuses = await collectLiveWatch(state, twitchChat);
-    if (watch.enabled) await enqueue({ type: 'liveWatchSnapshot', statuses });
-    if (sourceIds.length) await enqueue({ type: 'pokeidleKickSnapshot', statuses });
+    // Restaura inclusive a espera de rate limit quando o service worker reinicia.
+    kickQueries.seed(watch.statuses);
+    kickQueries.seed(source.kickStatuses);
+    const samples = {};
+    const statuses = await collectLiveWatch(state, twitchChat, { kickQueries, force, onKickResult: (id, sample) => { samples[id] = sample; } });
+    const pokeidleSamples = Object.fromEntries(sourceIds.filter(id => samples[id]).map(id => [id, samples[id]]));
+    // Uma resposta deve atualizar os dois donos antes de reconciliar sessões.
+    if (watch.enabled) await enqueue({ type: 'liveWatchSnapshot', statuses, samples, ...(sourceIds.length ? { pokeidleSamples } : {}), ...(includePokeIdleKick ? { platform: 'kick' } : {}) });
+    else if (sourceIds.length) await enqueue({ type: 'pokeidleKickSnapshot', samples: pokeidleSamples });
   })();
   try { return await polling; }
   finally { polling = undefined; }
@@ -83,6 +95,37 @@ async function refreshPokeIdle() {
     ]);
   } catch { /* O painel mostrará a última leitura e sua idade. */ }
   finally { clearTimeout(timeout); }
+}
+
+let syncingKick;
+async function syncPokeIdleKick() {
+  if (syncingKick) return syncingKick;
+  syncingKick = (async () => {
+    await enqueue({ type: 'pokeidleKickSyncAttempt' });
+    let failure = 'source-unavailable';
+    let timeout;
+    try {
+      if (api.tabs.query && api.tabs.sendMessage) {
+        const tabs = (await api.tabs.query({ url: 'https://pokeidle.io/*' })).filter(tab => isPokeIdleUrl(tab.url));
+        const source = tabs.find(tab => tab.active) || tabs[0];
+        if (source) {
+          const result = await Promise.race([
+            api.tabs.sendMessage(source.id, { type: 'requestPokeIdleSnapshot', platform: 'kick' }),
+            new Promise(resolve => { timeout = setTimeout(() => resolve(null), 8000); })
+          ]);
+          failure = result?.accepted === true ? null : result?.reason === 'no-channels' ? 'no-channels' : 'source-unavailable';
+        }
+      }
+    } catch { /* Falha da origem não apaga os canais já recebidos. */ }
+    finally { clearTimeout(timeout); }
+    // A atualização manual consulta a Kick mesmo com a automação desligada.
+    // O controller continua respeitando o master, a opção Kick e todas as pausas.
+    await pollLiveWatch({ force: true, includePokeIdleKick: true });
+    if (failure) await enqueue({ type: 'pokeidleKickSyncResult', status: failure });
+    return enqueue({ type: 'syncPokeIdleKick' });
+  })();
+  try { return await syncingKick; }
+  finally { syncingKick = undefined; }
 }
 
 async function initialize() {

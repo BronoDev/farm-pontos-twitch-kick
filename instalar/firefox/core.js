@@ -109,7 +109,10 @@ function createController(api, { twitchChat } = {}) {
       return { managed: true };
     }
     let snapshot;
+    const kickOnlySnapshot = message.type === 'pokeidleSnapshot' && message.platform === 'kick';
+    const kickOnlyOperation = kickOnlySnapshot || ['syncPokeIdleKick', 'pokeidleKickSnapshot', 'pokeidleKickSyncAttempt', 'pokeidleKickSyncResult', 'setPokeIdleKick'].includes(message.type) || (message.type === 'liveWatchSnapshot' && message.platform === 'kick');
     if (message.type === 'pokeidleSnapshot') {
+      if (message.platform !== undefined && message.platform !== 'kick') return { accepted: false };
       if (!Number.isInteger(sender.tab?.id) || (sender.frameId !== undefined && sender.frameId !== 0) || !isPokeIdleUrl(sender.url || sender.tab?.url)) return { accepted: false };
       try { const source = await api.tabs.get(sender.tab.id); if (!isPokeIdleUrl(source.pendingUrl || source.url)) return { accepted: false }; }
       catch { return { accepted: false }; }
@@ -119,6 +122,7 @@ function createController(api, { twitchChat } = {}) {
         && ['bonus', 'missing'].every(key => typeof entry[key] === 'boolean')
         && (typeof entry.live === 'boolean' || (entry.platform === 'kick' && entry.live === null))));
       if (!channels.length) return { accepted: false };
+      if (kickOnlySnapshot && (entries.length > 100 || entries.some(entry => entry?.platform !== 'kick') || channels.length !== entries.length)) return { accepted: false };
       snapshot = { channels, ruleText: typeof message.snapshot.ruleText === 'string' ? message.snapshot.ruleText.replace(/\s+/g, ' ').trim().slice(0, 500) : '' };
     }
     const warnings = [];
@@ -128,13 +132,25 @@ function createController(api, { twitchChat } = {}) {
       state.sessionHistory.push({ channelId: id, openedAt: session.openedAt, endedAt: now, media: session.media || 'chat', reason });
       state.sessionHistory = state.sessionHistory.slice(-300);
     }
-    if (state.pokeidle.sourceTabId !== null) {
+    if (!kickOnlyOperation && state.pokeidle.sourceTabId !== null) {
       try { const source = await api.tabs.get(state.pokeidle.sourceTabId); state.pokeidle.connected = isPokeIdleUrl(source.pendingUrl || source.url); }
       catch { state.pokeidle.connected = false; }
     }
     if (message.type === 'tabRemoved' && state.pokeidle.sourceTabId === message.tabId) state.pokeidle.connected = false;
+    const kickSync = state.pokeidle.kickSync;
+    if (kickSync.sourceTabId !== null) {
+      try { const source = await api.tabs.get(kickSync.sourceTabId); kickSync.connected = isPokeIdleUrl(source.pendingUrl || source.url); }
+      catch { kickSync.connected = false; }
+    }
+    if (message.type === 'tabRemoved' && kickSync.sourceTabId === message.tabId) kickSync.connected = false;
     if (snapshot) {
-      Object.assign(state.pokeidle, snapshot, { observedAt: now, sourceTabId: sender.tab.id, connected: true });
+      const kick = snapshot.channels.filter(item => item.platform === 'kick');
+      if (kickOnlySnapshot) state.pokeidle.channels = [...state.pokeidle.channels.filter(item => item.platform !== 'kick'), ...kick];
+      else {
+        const previousKick = state.pokeidle.channels.filter(item => item.platform === 'kick');
+        Object.assign(state.pokeidle, snapshot, { channels: [...snapshot.channels, ...(!kick.length ? previousKick : [])], observedAt: now, sourceTabId: sender.tab.id, connected: true });
+      }
+      if (kick.length) Object.assign(kickSync, { observedAt: now, sourceTabId: sender.tab.id, connected: true });
       for (const entry of snapshot.channels.filter(c => (c.platform === 'kick' || c.bonus) && !pokeIdleExcluded(state.pokeidle, `${c.platform}:${c.name}`))) {
         const item = channel(entry.platform, entry.name);
         const existing = state.channels.find(c => c.id === item.id);
@@ -273,6 +289,28 @@ function createController(api, { twitchChat } = {}) {
       if (parsed.protocol !== 'https:' || parsed.username || parsed.password) throw new Error('Use um link HTTPS sem credenciais.');
       await api.tabs.create({ url: parsed.href, active: true });
     }
+    function applyPokeIdleKickSamples(payload) {
+      const received = [];
+      for (const item of state.channels.filter(c => c.platform === 'kick' && (state.pokeidle.channels.some(entry => entry.platform === 'kick' && entry.name === c.name) || state.sessions[c.id]?.ownerIds?.includes(POKEIDLE_OWNER)))) {
+        const id = item.id;
+        if (pokeIdleExcluded(state.pokeidle, id)) continue;
+        if (!Object.hasOwn(payload.samples || payload.statuses || {}, id)) continue;
+        const sample = payload.samples ? normalizeKickStatus(payload.samples[id]) : normalizeKickStatus({ live: payload.statuses[id], checkedAt: now });
+        if (!sample || sample.checkedAt > now) continue;
+        state.pokeidle.kickStatuses[id] = sample;
+        received.push(sample);
+      }
+      if (received.length) {
+        const successful = received.filter(sample => typeof sample.live === 'boolean');
+        const failures = received.filter(sample => sample.errorCode);
+        if (successful.length) kickSync.lastSuccessAt = Math.max(kickSync.lastSuccessAt || 0, ...successful.map(sample => sample.checkedAt));
+        kickSync.status = successful.length === received.length ? 'ok' : failures.some(sample => sample.errorCode === 'rate-limited') ? 'rate-limited' : 'partial';
+        kickSync.errorCode = failures[0]?.errorCode || null;
+        const retries = received.map(sample => sample.nextRetryAt).filter(at => at > now);
+        kickSync.nextRetryAt = retries.length ? Math.min(...retries) : null;
+      }
+
+    }
     if (message.type === 'setLiveWatch') {
       if (typeof message.enabled !== 'boolean' || !Array.isArray(message.channelIds) || (message.enabled && !message.channelIds.length) || message.channelIds.length > 100 || message.channelIds.some(id => typeof id !== 'string' || !state.channels.some(item => item.id === id))) throw new Error('Configuração de automação inválida.');
       if (message.twitchMode !== undefined && !['chat', 'irc'].includes(message.twitchMode)) throw new Error('Modo de chat Twitch inválido.');
@@ -285,13 +323,21 @@ function createController(api, { twitchChat } = {}) {
         for (const schedule of state.schedules) schedule.enabled = false;
       }
     } else if (message.type === 'liveWatchSnapshot') {
-      for (const id of state.liveWatch.channelIds) state.liveWatch.statuses[id] = { live: typeof message.statuses?.[id] === 'boolean' ? message.statuses[id] : null, checkedAt: now };
-      state.liveWatch.lastCheckedAt = now;
+      for (const id of state.liveWatch.channelIds.filter(id => message.platform !== 'kick' || id.startsWith('kick:'))) {
+        const sample = id.startsWith('kick:') && message.samples ? normalizeKickStatus(message.samples[id]) : null;
+        state.liveWatch.statuses[id] = sample || { live: typeof message.statuses?.[id] === 'boolean' ? message.statuses[id] : null, checkedAt: now };
+      }
+      if (message.platform !== 'kick') state.liveWatch.lastCheckedAt = now;
+      if (message.pokeidleSamples) applyPokeIdleKickSamples({ samples: message.pokeidleSamples });
     } else if (message.type === 'pokeidleKickSnapshot') {
-      for (const item of state.channels.filter(c => c.platform === 'kick' && (state.pokeidle.channels.some(entry => entry.platform === 'kick' && entry.name === c.name) || state.sessions[c.id]?.ownerIds?.includes(POKEIDLE_OWNER)))) {
-        const id = item.id;
-        if (pokeIdleExcluded(state.pokeidle, id)) continue;
-        state.pokeidle.kickStatuses[id] = { live: typeof message.statuses?.[id] === 'boolean' ? message.statuses[id] : null, checkedAt: now };
+      applyPokeIdleKickSamples(message);
+    } else if (message.type === 'pokeidleKickSyncAttempt') {
+      kickSync.lastAttemptAt = now;
+    } else if (message.type === 'pokeidleKickSyncResult') {
+      if (['source-unavailable', 'no-channels'].includes(message.status)) {
+        kickSync.status = message.status;
+        kickSync.errorCode = message.status;
+        if (message.status === 'source-unavailable') kickSync.connected = false;
       }
     } else if (message.type === 'add') {
       const item = channel(message.platform, message.input);
@@ -358,6 +404,9 @@ function createController(api, { twitchChat } = {}) {
     } else if (message.type === 'setPokeIdle') {
       if (typeof message.enabled !== 'boolean') throw new Error('Opção PokeIdle inválida.');
       state.pokeidle.enabled = message.enabled;
+    } else if (message.type === 'setPokeIdleKick') {
+      if (typeof message.enabled !== 'boolean') throw new Error('Opção Kick do PokeIdle inválida.');
+      kickSync.enabled = message.enabled;
     } else if (message.type === 'refreshPokeIdle') {
       if (!state.pokeidle.connected) warnings.push('Abra o PokeIdle e aguarde a lista de canais oficiais carregar para sincronizar.');
     } else if (message.type === 'setPriority') {
@@ -385,7 +434,7 @@ function createController(api, { twitchChat } = {}) {
     else if (message.type === 'resumeAutomation') {
       state.automationPaused = false; state.pausedChannels = [];
       for (const schedule of state.schedules) if (schedule.enabled && now >= schedule.startsAt && now < schedule.endsAt) schedule.startedAt = null;
-    } else if (!['status', 'tick', 'tabRemoved', 'pokeidleSnapshot'].includes(message.type) && !applyRewardsCommand(state, message, now)) throw new Error('Comando desconhecido.');
+    } else if (!['status', 'tick', 'tabRemoved', 'pokeidleSnapshot', 'syncPokeIdleKick'].includes(message.type) && !applyRewardsCommand(state, message, now)) throw new Error('Comando desconhecido.');
 
     // A opção padrão do monitor também converte sessões IRC antigas em popout.
     if (state.liveWatch.twitchMode !== 'irc') for (const item of state.channels.filter(c => c.platform === 'twitch' && state.sessions[c.id]?.transport === 'irc')) {
@@ -415,8 +464,8 @@ function createController(api, { twitchChat } = {}) {
     // removem a participação PokeIdle de uma sessão; donos manuais são preservados.
     for (const item of state.channels) {
       const entry = state.pokeidle.channels.find(c => `${c.platform}:${c.name}` === item.id);
-      const sourceOffline = item.platform === 'kick' ? pokeIdleKickLive(state.pokeidle, item.id, now) === false : snapshot && entry && (!entry.live || !entry.bonus);
-      const revoked = (item.platform === 'twitch' && state.liveWatch.enabled) || !state.pokeidle.enabled || sourceOffline || pokeIdleExcluded(state.pokeidle, item.id);
+      const sourceOffline = item.platform === 'kick' ? pokeIdleKickLive(state.pokeidle, item.id, now) === false : snapshot && !kickOnlySnapshot && entry && (!entry.live || !entry.bonus);
+      const revoked = (item.platform === 'twitch' && state.liveWatch.enabled) || (item.platform === 'kick' && !kickSync.enabled) || !state.pokeidle.enabled || sourceOffline || pokeIdleExcluded(state.pokeidle, item.id);
       if (revoked) {
         const queuedOwners = (state.queueSources[item.id] || []).filter(owner => owner !== POKEIDLE_OWNER);
         if (queuedOwners.length) state.queueSources[item.id] = queuedOwners;

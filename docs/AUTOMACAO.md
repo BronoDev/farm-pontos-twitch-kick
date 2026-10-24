@@ -1,6 +1,6 @@
 # Automação dos canais
 
-Na versão 0.10, a Twitch usa somente chat. O padrão abre o popout oficial do chat numa aba inativa e silenciosa, usando a sessão da Twitch deste navegador. A Kick pode abrir a live com tentativa de menor qualidade disponível. A extensão não cria janelas de pop-up para essas sessões.
+Na versão 0.11, a Twitch mantém seu fluxo de sincronização e usa somente chat. O padrão abre o popout oficial do chat numa aba inativa e silenciosa, usando a sessão da Twitch deste navegador. A Kick pode abrir a live com tentativa de menor qualidade disponível. A extensão não cria janelas de pop-up para essas sessões.
 
 ## Configurar
 
@@ -38,6 +38,10 @@ O IRC não ocupa uma aba nem consome o limite de abas. O popout padrão não pre
 Abra o jogo e carregue seus canais. Os links Twitch elegíveis usam somente o chat. Os links Kick são identificados pela plataforma e podem iniciar lives após um sinal confirmado de online. Um link isolado informa o canal, não seu estado atual ou um bônus concedido.
 
 Novos inícios pela integração exigem uma leitura recente da página PokeIdle. As consultas Kick podem confirmar se os canais encontrados estão ao vivo. Se a origem estiver fechada ou desatualizada, não há novos inícios por ela; uma sessão existente não é considerada offline apenas por falta de leitura. Veja [POKEIDLE.md](POKEIDLE.md).
+
+O bloco Kick permite sincronizar apenas essa plataforma e controlar sua participação na integração. **Sincronizar Kick** aguarda a leitura e a consulta de estado; preserva os dados Twitch. **Automatizar Kick do PokeIdle** não altera sessões manuais nem os canais selecionados separadamente no monitor. Com esse controle ou a automação geral do PokeIdle desligados, sincronizar apenas atualiza os dados, sem reativá-los nem abrir sessões por essa origem. A ação também respeita **Fechar todos** e as pausas individuais.
+
+Consultas próximas compartilham resultados recentes, e bloqueios ou limites aplicam uma espera antes de tentar novamente. Erros recentes continuam desconhecidos, sem recuperar um marcador antigo de live para abrir outra sessão.
 
 ## Atualização e limites
 
