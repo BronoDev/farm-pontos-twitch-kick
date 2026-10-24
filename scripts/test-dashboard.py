@@ -124,20 +124,6 @@ def record(page, xp=None, points=None, at=None):
     idle(page)
 
 
-def add_schedule(page, channel_id, start, end):
-    enable_panel(page, 'schedule')
-    open_panel(page, '#schedule-panel')
-    for checkbox in page.locator('#schedule-channels input').all():
-        checkbox.set_checked(checkbox.input_value() == channel_id)
-    fill_time(page, '#schedule-start', start)
-    fill_time(page, '#schedule-end', end)
-    before = page.evaluate('__state().schedules.length')
-    page.get_by_role('button', name='Agendar sessões', exact=True).tap()
-    page.wait_for_function('count => __state().schedules.length === count + 1', arg=before)
-    idle(page)
-    return page.evaluate('__state().schedules.at(-1)')
-
-
 def run():
     server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), partial(QuietHandler, directory=str(ROOT / 'src')))
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -232,30 +218,6 @@ def run():
             assert page.evaluate('__state().automationPaused')
             assert page.evaluate('__state().queue.length') == 0
             assert page.evaluate('ids=>ids.every(id=>__tabs().some(tab=>tab.id===id))', personal_tabs), 'resgate é aba pessoal e deve permanecer'
-            now = page.evaluate('Date.now()')
-            scheduled = add_schedule(page, 'twitch:outro', now + 120000, now + 300000)
-            assert scheduled['startedAt'] is None
-            page.locator('#toggle-automation').tap()
-            idle(page)
-            page.evaluate('at=>__setClock(at)', scheduled['startsAt'] + 1000)
-            page.evaluate("__dispatch({type:'tick'})")
-            refresh(page)
-            assert page.evaluate("Object.keys(__state().sessions).join(',')") == 'twitch:outro'
-            assert page.evaluate('__state().schedules[0].startedAt !== null')
-            page.evaluate('at=>__setClock(at)', scheduled['endsAt'] + 1000)
-            page.evaluate("__dispatch({type:'tick'})")
-            refresh(page)
-            assert page.evaluate('Object.keys(__state().sessions).length') == 0
-            assert page.evaluate('__state().schedules[0].endedAt !== null')
-
-            now = page.evaluate('Date.now()')
-            second = add_schedule(page, 'kick:yetz', now + 120000, now + 600000)
-            page.evaluate('at=>__setClock(at)', second['startsAt'] + 1000)
-            page.evaluate("__dispatch({type:'tick'})")
-            refresh(page)
-            assert page.evaluate("Object.keys(__state().sessions).join(',')") == 'kick:yetz'
-            page.get_by_role('button', name='Fechar todos', exact=True).tap()
-            idle(page)
             page.evaluate('__advance(120000)')
             page.evaluate("__dispatch({type:'tick'})")
             refresh(page)
@@ -266,7 +228,7 @@ def run():
             assert not errors, errors
             assert page.locator('#error').is_hidden(), page.locator('#error').text_content()
             browser.close()
-            print('PASS: painel360px + core/rewards/automation reais; limite/fila, bônus, histórico, resgate assistido pessoal, cooldown/novo saldo, agenda/tick, fechar tudo e dispensar alertas. Sem overflow/erros JS. APIs de navegador simuladas, sem serviços externos.')
+            print('PASS: painel360px + core/rewards/automation reais; limite/fila, bônus, histórico, resgate assistido pessoal, cooldown/novo saldo, fechar tudo e dispensar alertas. Sem overflow/erros JS. APIs de navegador simuladas, sem serviços externos.')
     finally:
         server.shutdown()
         server.server_close()

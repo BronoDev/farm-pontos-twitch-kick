@@ -50,6 +50,20 @@ textarea { resize: vertical; }
 input[type=checkbox] { width: 18px; height: 18px; min-height: 18px; padding: 0; flex: none; accent-color: var(--accent); margin: 2px 0 0; }
 .channel-form { display: grid; grid-template-columns: 108px minmax(0, 1fr) auto; align-items: end; gap: 10px; padding: 18px 0; border-top: 1px solid var(--border); }
 .channel-form > button { padding-inline: 13px; }
+.add-kick-options { grid-column: 1 / -1; display: flex; align-items: end; gap: 14px; padding-top: 4px; }
+.add-kick-options > label { flex: 1; max-width: 280px; }
+.add-kick-options .hint { flex: 1; margin: 0 0 9px; font-size: 11px; }
+.channel-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) 155px; gap: 10px; margin: 0 0 14px; }
+.channel-toolbar input, .channel-toolbar select { font-size: 12px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.no-matches { padding: 24px 8px; text-align: center; }
+.no-matches p { font-size: 12px; margin-bottom: 12px; }
+.channel-setting { display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; }
+.channel-setting select { width: min(240px, 65%); font-size: 12px; }
+.channel-setting ~ .priority-label { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+#twitch-chat-settings label { margin-top: 14px; }
+#twitch-chat-settings .actions { margin-top: 12px; }
+.help-link { display: inline-block; font-size: 12px; margin-top: 14px; }
 .bulk-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .automation-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 5px; }
 .automation-bar .hint { margin-top: 0; font-size: 11px; }
@@ -166,6 +180,13 @@ footer { padding: 18px 24px 24px; display: flex; justify-content: space-between;
   main { padding: 16px; }
   .panel { padding: 16px; }
   .channel-form { grid-template-columns: 1fr; gap: 12px; padding: 16px 0; }
+  .add-kick-options { display: block; }
+  .add-kick-options > label { max-width: none; }
+  .add-kick-options .hint { margin: 7px 0 0; }
+  .channel-toolbar { grid-template-columns: minmax(0, 1fr); }
+  .channel-setting { flex-direction: column; align-items: stretch; }
+  .channel-setting select { width: 100%; }
+  .channel-toolbar input, .channel-toolbar select, .channel-setting select { font-size: 16px; }
   input:not([type=checkbox]), select, textarea { min-height: 44px; font-size: 16px; }
   button, button.text-button { min-height: 44px; }
   input[type=checkbox] { width: 20px; height: 20px; }

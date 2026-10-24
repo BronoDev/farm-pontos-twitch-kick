@@ -130,6 +130,7 @@ def run_width(browser, server, width):
     page.add_init_script(BOOTSTRAP)
     page.goto(f'http://127.0.0.1:{server.server_port}/src/popup.html')
     idle(page)
+    assert page.locator('#pokeidle-panel').is_hidden(), 'a integração deve aparecer quando for configurada'
     snapshot = page.evaluate('__readFixture()')
     assert snapshot['ready']
     assert len(snapshot['channels']) == 16
@@ -208,7 +209,7 @@ def run_width(browser, server, width):
     add_channel(page, 'kick', 'yetz')
     kick_row = page.locator('#channels .row').filter(has_text='yetz')
     kick_row.locator('details.channel-options > summary').tap()
-    kick_row.locator('select').select_option('2')
+    kick_row.locator('select[aria-label^="Prioridade de "]').select_option('2')
     page.wait_for_function("__state().channels.find(channel=>channel.id==='kick:yetz').priority===2")
     idle(page)
     kick_row.get_by_role('button', name='Iniciar', exact=True).tap()

@@ -36,7 +36,7 @@ No ZIP do repositório completo, selecione a pasta **instalar/chromium**.
 
 Se você baixou o repositório completo, selecione a pasta **instalar/opera-gx**. O Opera GX espera a pasta extraída.
 
-O Opera GX usa Chromium; seu pacote usa a mesma base do Chrome/Edge. Mantenha o navegador atualizado (o manifesto exige Chromium 109+). A instalação e o consumo de recursos no Opera GX ainda precisam ser conferidos no seu computador.
+O Opera GX usa Chromium; seu pacote usa a mesma base do Chrome/Edge. Mantenha o navegador atualizado (o manifesto exige Chromium 116+). A instalação e o consumo de recursos no Opera GX ainda precisam ser conferidos no seu computador.
 
 Entre na Twitch/Kick **no próprio Opera GX**: o login de outro navegador não é compartilhado. Se algum chat não conectar ou parar de atualizar, confira bloqueios de conteúdo e limites de recursos do GX para aquela página.
 
@@ -44,7 +44,7 @@ Entre na Twitch/Kick **no próprio Opera GX**: o login de outro navegador não �
 
 Entre na Twitch/Kick no mesmo navegador. Abra **Chat Leve** pelo menu de extensões, adicione um canal (por exemplo `https://kick.com/yetz`) e clique em **Iniciar** ou **Iniciar todos**. Não é necessário instalar Node, Python ou executar comandos para usar.
 
-Na Kick, a opção de vídeo vem ativada: abre a live em uma aba silenciosa e tenta escolher a menor qualidade pelo player oficial. Na Twitch manual, abre o chat; a automação PokeIdle usa a live com vídeo. Ambas ficam em segundo plano, sem novas janelas de pop-up. **Fechar todos** encerra as abas gerenciadas e conserva sua lista para abrir novamente. As abas continuam visíveis na barra do navegador; este modo não cria chats completamente invisíveis.
+Na Kick, escolha **Live na menor qualidade** para abrir uma aba silenciosa e tentar a menor resolução oferecida pelo player oficial, ou **Só chat** para abrir apenas o chat. **Padrão da Kick** segue a opção geral e preserva o comportamento das instalações anteriores. Na Twitch manual, abre o chat; a automação PokeIdle usa a live com vídeo. Ambas ficam em segundo plano, sem novas janelas de pop-up. **Fechar todos** encerra as abas gerenciadas e conserva sua lista para abrir novamente. As abas continuam visíveis na barra do navegador; este modo não cria chats completamente invisíveis.
 
 Clique em **Atualizar** para ver a última amostra de reprodução/resolução da Kick. Se o vídeo não iniciar, abra sua aba e clique em reproduzir. Se não conseguir ajustar automaticamente a qualidade, selecione a menor opção no player. Confira pontos e XP nas plataformas. Detalhes em [README.md](README.md).
 
@@ -89,3 +89,17 @@ Comece adicionando seus canais ou conectando o PokeIdle. As opções Kick aparec
 Em **Personalizar painel**, habilite o checklist de bônus, o histórico manual e a agenda conforme precisar. Se você já tinha dados de uma versão anterior, a seção correspondente continua disponível. As preferências ficam salvas neste navegador. Ocultar um painel não apaga registros nem encerra uma agenda; use os controles da agenda ou **Fechar todos** para pausar a automação.
 
 Para ver prioridade ou diagnóstico, abra os detalhes do canal. Mais informações em [docs/INTERFACE.md](docs/INTERFACE.md). Esta versão também requer assinatura Mozilla nova para instalação Firefox permanente; os ZIPs continuam sendo pacotes de desenvolvimento.
+
+## Versão 0.9: Kick por canal e automação de lives
+
+Depois de atualizar e recarregar, autorize o acesso aos serviços oficiais de autenticação e estado das lives Twitch quando o navegador solicitar. A autorização de conta é configurada separadamente no campo local de conexão.
+
+Ao adicionar um canal Kick, escolha entre seguir o padrão, abrir a live na menor qualidade ou usar somente o chat. Depois, você pode alterar essa escolha em **Opções do canal**. Mudar o modo de uma sessão aberta afeta somente aquele canal; canais fechados e a pausa de **Fechar todos** são preservados.
+
+O padrão geral da Kick continua disponível para canais sem escolha individual. O limite de vídeos Kick conta somente as lives Kick abertas. Se não houver vaga, a sessão aguarda na fila. A tentativa de qualidade usa as opções realmente oferecidas pelo canal; não cria uma resolução menor nem garante pontos. Confira a resolução recebida nos detalhes do canal. Saiba mais em [docs/KICK-VIDEO.md](docs/KICK-VIDEO.md).
+
+O PokeIdle também pode ser mostrado em **Personalizar painel**. Em uma instalação nova ele fica oculto até sua escolha; uma integração já usada continua disponível na atualização. Ocultar seu painel não desativa a automação. Busca e filtros aparecem quando a lista passa de cinco canais e alteram somente a apresentação.
+
+O cadastro de horários dá lugar à **Automação de lives**. Habilite seu painel, selecione os canais, ative o monitoramento e clique em **Salvar automação**. Ele inicia as sessões quando o serviço confirma uma live e encerra somente sua participação automática após offline explícito. Respostas bloqueadas ou desconhecidas não são tratadas como offline.
+
+Para conectar a Twitch sem abrir uma aba, use seu próprio token OAuth com `chat:read`, inserido somente no campo de conexão da extensão. O chat não reproduz vídeo e não comprova ganho de pontos ou XP. Os horários legados são desativados na primeira leitura após a atualização, sem apagar os dados. Ativar o novo modo desativa a abertura automática pelo widget PokeIdle e impede reabilitá-la enquanto o monitor estiver ativo; desligá-lo não reativa esses modos anteriores. Leia [docs/AUTOMACAO.md](docs/AUTOMACAO.md) para autorizar sua conta e conferir os estados da conexão.

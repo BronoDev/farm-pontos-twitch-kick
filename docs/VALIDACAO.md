@@ -108,3 +108,15 @@ A versão 0.7 altera arquivos e permissões e precisa de assinatura Firefox nova
 - `web-ext` 10.8.0 validou Firefox desktop e Android com zero erros, avisos ou observações. O aviso da ferramenta sobre não conseguir gravar sua configuração de atualização não afetou o resultado da validação.
 
 As verificações de interface usam Chromium e APIs de navegador simuladas, com o controlador real. Não equivalem à execução nativa em Firefox/Opera GX ou em Android, nem validam player real, pontos ou consumo. A versão alterada também precisa de assinatura Mozilla nova para instalação Firefox permanente. Consulte [INTERFACE.md](INTERFACE.md) para escolher os recursos visíveis sem apagar dados ou desativar uma agenda por engano.
+
+## Versão 0.9: modos Kick e automação de lives
+
+- `npm run package`, `npm run check` e **153 testes Node** passaram, sem falhas ou skips. As quatro distribuições 0.9.0 e seus ZIPs correspondem às fontes. Os testes incluem modos Kick por canal, precedência sobre o padrão geral, migração das sessões, fila e limites; preferências de apresentação; autenticação e protocolo de chat Twitch simulados; monitoramento de lives e migração de horários legados sem apagar registros.
+- O teste de player passou no Chromium com 18 cenários de DOM simulado, incluindo opções externas intocadas, troca de vídeo, pausa preservada, limite de reinicializações e limpeza. Isso verifica o comportamento nas fixtures, não a estrutura atual dos sites.
+- O fluxo de automação passou em 320, 600 e 1280px com controlador real e IRC simulado. Verificou abertura Kick, Twitch sem aba, estados do chat, pausa/retomada, consultas e proteção da credencial no estado público. Os demais fluxos de interface adaptados também passaram.
+- Os painéis gerados para Firefox desktop e Android carregaram seu módulo ESM e permitiram ativar o histórico. `web-ext` 10.8.0 validou ambos com zero erros, avisos ou observações. O aviso de atualização da própria ferramenta, sem permissão para gravar sua configuração, não afetou a validação.
+- `npm run mozilla:check` conferiu o plano 0.9.0 e relatou `WEB_EXT_API_KEY` e `WEB_EXT_API_SECRET` ausentes. Não houve envio ou assinatura de um XPI desta versão.
+
+Os serviços de estado/autorização, o WebSocket e as respostas do servidor foram simulados nos testes. Não houve validação de login pessoal, entrada real no chat, reprodução/qualidade remota, consumo ou crédito de pontos/XP. Firefox, Opera GX e Android nativos também continuam sem validação nesta versão. A instalação Firefox permanente precisa de nova assinatura Mozilla; a assinatura anterior não cobre os arquivos alterados.
+
+Consulte [AUTOMACAO.md](AUTOMACAO.md) para configurar o OAuth oficial e os canais, e [KICK-VIDEO.md](KICK-VIDEO.md) para escolher chat ou live e conferir a qualidade recebida.

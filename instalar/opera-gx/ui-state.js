@@ -1,4 +1,4 @@
-const UI_PANEL_COLLECTIONS = { bonuses: 'bonuses', history: 'measurements', schedule: 'schedules' };
+const UI_PANEL_COLLECTIONS = { bonuses: 'bonuses', history: 'measurements', schedule: 'schedules', pokeidle: null };
 
 // Uma preferência ausente permite recuperar os painéis que já tinham dados.
 // Ocultar um painel é apenas uma escolha de interface; não desativa sua função.
@@ -16,6 +16,8 @@ export function uiPanelVisible(state, panel) {
   if (!Object.hasOwn(UI_PANEL_COLLECTIONS, panel)) return false;
   const preference = normalizeUiPreferences(state?.uiPreferences).panels[panel];
   if (typeof preference === 'boolean') return preference;
+  if (panel === 'pokeidle') return Number.isFinite(state?.pokeidle?.observedAt) && state.pokeidle.observedAt > 0;
+  if (panel === 'schedule' && Array.isArray(state?.liveWatch?.channelIds) && state.liveWatch.channelIds.length) return true;
   const records = state?.[UI_PANEL_COLLECTIONS[panel]];
   return Array.isArray(records) && records.length > 0;
 }

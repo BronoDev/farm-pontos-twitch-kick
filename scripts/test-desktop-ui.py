@@ -56,7 +56,7 @@ BOOTSTRAP = r'''
   };
   window.__state=()=>structuredClone(data);
   window.__created=()=>structuredClone(created);
-  window.__legacyPreferences=()=>{delete data.uiPreferences;persist();};
+  window.__legacyPreferences=()=>{delete data.uiPreferences;delete data.automationsMigrated;persist();};
   window.__ingestFixture=async()=>{
     const {readPokeIdleTwitch}=await import('/src/pokeidle.js');
     const html=await(await fetch('/tests/fixtures/pokeidle-twitch.html')).text();
@@ -122,8 +122,12 @@ def run_size(browser, origin, width, height):
     idle(page)
 
     # Primeiro uso: somente configuração útil, sem contadores ou formulários vazios.
-    for selector in ('#bonuses-panel', '#history-panel', '#schedule-panel', '#overview', '#alerts-panel', '#kick-options', '#pokeidle-configured', '#session-controls'):
+    for selector in ('#bonuses-panel', '#history-panel', '#schedule-panel', '#overview', '#alerts-panel', '#kick-options', '#pokeidle-panel', '#session-controls', '#channel-toolbar'):
         assert page.locator(selector).is_hidden(), selector
+    assert page.locator('#add-kick-options').is_visible()
+    page.locator('#platform').select_option('twitch')
+    assert page.locator('#add-kick-options').is_hidden()
+    show_feature(page, 'pokeidle')
     assert page.locator('#pokeidle-setup').is_visible()
     assert page.locator('#open-pokeidle').is_visible()
     assert page.locator('#add-form').is_visible()
@@ -144,19 +148,21 @@ def run_size(browser, origin, width, height):
     start = page.locator('#start-all').bounding_box()
     assert start['y'] + start['height'] <= height, f'Iniciar todos fora da primeira tela em {width}px: {start}'
     add(page, 'kick', 'um_canal_com_nome_comprido_123456789')
-    assert page.locator('#kick-options').is_visible()
+    open_details(page, '#settings-panel')
     open_details(page, '#kick-options')
     assert page.locator('#kick-live').is_visible()
+    page.locator('#settings-panel > summary').click()
     page.locator('#start-all').click()
     idle(page)
     assert len(page.evaluate('Object.keys(__state().sessions)')) == 2
 
     row = page.locator('#channels .row').filter(has_text='canal_twitch')
     assert row.locator('details.channel-options').is_visible()
-    assert row.locator('select').is_hidden()
+    priority = row.locator('select[aria-label^="Prioridade de "]')
+    assert priority.is_hidden()
     row.locator('details.channel-options > summary').click()
-    assert row.locator('select').is_visible()
-    row.locator('select').select_option('1')
+    assert priority.is_visible()
+    priority.select_option('1')
     idle(page)
     assert page.evaluate("__state().channels.find(channel=>channel.id==='twitch:canal_twitch').priority") == 1
 
@@ -184,6 +190,7 @@ def run_size(browser, origin, width, height):
     assert page.locator('#pokeidle-configured').is_visible()
     assert page.locator('#pokeidle-official-count').inner_text() == '16'
     assert len(page.evaluate('__state().channels')) == 18
+    assert page.locator('#channel-toolbar').is_visible()
     no_overflow(page)
     if width <= 480:
         assert page.locator('#stop-all').bounding_box()['height'] >= 44
@@ -213,22 +220,25 @@ def legacy_data(browser, origin):
       await __dispatch({type:'addBonus',bonus:{channelId:'kick:yetz',title:'Bônus existente'}});
       await __dispatch({type:'addMeasurement',measurement:{channelId:'global',xp:100,at:Date.now()}});
       await __dispatch({type:'addSchedule',schedule:{channelIds:['kick:yetz'],startsAt:Date.now()+60000,endsAt:Date.now()+300000}});
+      await __ingestFixture();
       __legacyPreferences();
     }''')
     page.reload()
     idle(page)
     for feature in ('bonuses', 'history', 'schedule'):
         assert page.locator('#' + feature + '-panel').is_visible(), feature
+    assert page.locator('#pokeidle-panel').is_visible(), 'uma origem PokeIdle configurada permanece visível após a atualização'
     counts = page.evaluate('[__state().bonuses.length,__state().measurements.length,__state().schedules.length]')
     assert counts == [1, 1, 1], counts
+    assert page.evaluate('__state().schedules[0].enabled') is False, 'Horários antigos devem migrar desativados, preservando os registros'
     show_feature(page, 'schedule', False)
     page.reload()
     idle(page)
     assert page.locator('#schedule-panel').is_hidden()
-    assert page.evaluate('__state().schedules[0].enabled') is True, 'Ocultar a agenda não desativa o agendamento existente'
+    assert page.evaluate('__state().schedules[0].enabled') is False, 'Ocultar a automação não deve reativar horários antigos'
     assert page.evaluate('[__state().bonuses.length,__state().measurements.length,__state().schedules.length]') == counts
     context.close()
-    print('PASS: dados antigos tornam os recursos visíveis sem preferência explícita; ocultação persiste sem apagar dados ou desativar agenda.')
+    print('PASS: dados antigos tornam os recursos visíveis; migração desativa horários antigos sem apagá-los e ocultação persiste sem reativá-los.')
 
 
 def packaged_panels(browser, origin):

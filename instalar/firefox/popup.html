@@ -28,9 +28,11 @@
             <label>Plataforma<select id="platform"><option value="kick">Kick</option><option value="twitch">Twitch</option></select></label>
             <label class="grow">Canal ou link<input id="channel" placeholder="Nome do canal ou link" required maxlength="200" autocomplete="off"></label>
             <button type="submit">Adicionar</button>
+            <div id="add-kick-options" class="add-kick-options"><label>Assistir na Kick<select id="add-kick-mode"><option value="default">Padrão da Kick</option><option value="live">Live na menor qualidade</option><option value="chat">Só chat</option></select></label><p class="hint">A live usa o player oficial, com áudio silenciado.</p></div>
           </form>
+          <div id="channel-toolbar" class="channel-toolbar" hidden><label class="search-label"><span class="sr-only">Buscar canal</span><input id="channel-search" type="search" maxlength="80" placeholder="Buscar canal" autocomplete="off"></label><label><span class="sr-only">Filtrar canais</span><select id="channel-filter"><option value="all">Todos os canais</option><option value="active">Abertos</option><option value="queued">Na fila</option><option value="kick">Kick</option><option value="twitch">Twitch</option></select></label></div>
+          <p id="channel-matches" class="hint" hidden></p>
           <div id="channels" role="region" aria-label="Lista de canais" tabindex="0"></div>
-          <details id="kick-options" class="inline-options" hidden><summary>Reprodução na Kick</summary><div class="panel-body"><label class="check-option"><input id="kick-live" type="checkbox" checked><span>Reproduzir live na menor qualidade disponível</span></label><p class="hint">Alterar esta opção reinicia as sessões Kick abertas.</p></div></details>
         </section>
         <section id="overview" class="overview" aria-label="Resumo de recompensas" hidden><div id="xp-overview"><span class="eyebrow">XP REGISTRADO</span><strong id="xp-total">Sem comparação</strong><span class="hint">Variação dos saldos manuais</span></div><div id="bonus-overview"><span class="eyebrow">BÔNUS PRONTOS</span><strong id="bonus-total">0</strong><span class="hint">Conforme os requisitos cadastrados</span></div></section>
         <div id="optional-panels">
@@ -65,21 +67,30 @@
       <h3>Leituras registradas</h3><div id="measurements"></div>
     </div></details>
 
-    <details id="schedule-panel" hidden><summary>Agenda das oportunidades</summary><div class="panel-body">
-      <p class="hint">Use horários confirmados nas regras do bônus. O navegador precisa estar em execução; a agenda não confirma que um canal está ao vivo.</p>
-      <p id="schedule-timezone" class="hint"></p>
-      <div id="schedules"></div>
-      <form id="schedule-form" class="stacked-form">
-        <fieldset><legend>Canais da oportunidade</legend><div id="schedule-channels" class="channel-checks"></div></fieldset>
-        <div class="form-grid"><label>Início<input id="schedule-start" type="datetime-local" required></label><label>Fim<input id="schedule-end" type="datetime-local" required></label></div>
-        <button type="submit">Agendar sessões</button>
+    <details id="schedule-panel" hidden><summary>Automação de lives</summary><div class="panel-body">
+      <p class="hint">Escolha os canais. Quando entram ao vivo, a Kick abre uma aba e a Twitch conecta o chat em segundo plano. Ao saírem do ar, suas sessões automáticas são encerradas.</p>
+      <p id="watch-status" class="hint" role="status"></p>
+      <p id="legacy-schedules-note" class="notice compact" hidden></p>
+      <form id="watch-form" class="stacked-form">
+        <label class="check-option"><input id="watch-enabled" type="checkbox"><span>Monitorar lives automaticamente</span></label>
+        <fieldset><legend>Canais para acompanhar</legend><div id="watch-channels" class="channel-checks"></div></fieldset>
+        <div class="actions"><button type="submit">Salvar automação</button><button id="watch-now" type="button" class="secondary" hidden>Verificar agora</button></div>
       </form>
+      <details id="twitch-chat-settings" class="inline-options" hidden><summary>Conectar chat Twitch sem abas</summary><div class="panel-body">
+        <p id="twitch-chat-status" class="hint" role="status"></p>
+        <p class="hint">Conecte uma credencial de chat da sua conta Twitch neste navegador. Não é a senha da sua conta.</p>
+        <label>Token de acesso da Twitch<input id="twitch-token" type="password" autocomplete="off" spellcheck="false" maxlength="300" placeholder="Credencial de chat da sua conta"></label>
+        <div class="actions"><button id="connect-twitch-chat" type="button">Conectar chat</button><button id="disconnect-twitch-chat" type="button" class="secondary" hidden>Remover conexão</button></div>
+        <a class="help-link" href="https://github.com/BronoDev/farm-pontos-twitch-kick/blob/main/docs/AUTOMACAO.md" target="_blank" rel="noopener noreferrer">Como conectar pelo login oficial</a>
+        <p class="hint">O chat conectado não comprova audiência de vídeo nem XP creditado pelo jogo.</p>
+      </div></details>
+      <div id="watch-live-status"></div>
     </div></details>
 
         </div>
       </div>
       <div class="side-column">
-        <section id="pokeidle-panel" class="panel pokeidle-panel" aria-labelledby="pokeidle-heading">
+        <section id="pokeidle-panel" class="panel pokeidle-panel" aria-labelledby="pokeidle-heading" hidden>
           <div class="panel-heading"><div><span class="eyebrow">INTEGRAÇÃO TWITCH</span><h2 id="pokeidle-heading">PokeIdle</h2></div><span id="pokeidle-connection" class="tag">Não conectado</span></div>
           <div id="pokeidle-setup"><h3>Conecte sua lista de canais</h3><p>Abra o jogo e carregue a lista de canais oficiais para configurar as lives automáticas.</p></div>
           <button id="open-pokeidle" class="secondary connect-button" type="button">Abrir PokeIdle <span aria-hidden="true">↗</span></button>
@@ -94,9 +105,10 @@
             <details id="pokeidle-list-panel"><summary>Ver canais da origem</summary><div class="panel-body"><label>Mostrar<select id="pokeidle-filter"><option value="all">Todos os canais</option><option value="eligible">Ao vivo, com bônus e faltantes</option><option value="live-bonus">Ao vivo com bônus</option><option value="missing">Marcados faltantes</option></select></label><div id="pokeidle-channels"></div></div></details>
           </div>
         </section>
-        <details id="personalization-panel"><summary>Personalizar painel</summary><div class="panel-body"><p class="hint">Ative as ferramentas que você quer configurar.</p><label class="feature-option"><input id="show-bonuses" type="checkbox"><span><strong>Bônus e resgates</strong><span>Cadastre requisitos e acompanhe resgates.</span></span></label><label class="feature-option"><input id="show-history" type="checkbox"><span><strong>Histórico de XP e pontos</strong><span>Registre saldos para comparar ganhos.</span></span></label><label class="feature-option"><input id="show-schedule" type="checkbox"><span><strong>Agenda de sessões</strong><span>Escolha os canais e horários para iniciar.</span></span></label><p class="hint">Ocultar um painel conserva seus dados e agendas ativas.</p></div></details>
+        <details id="personalization-panel"><summary>Personalizar painel</summary><div class="panel-body"><p class="hint">Escolha as ferramentas que quer ver.</p><label class="feature-option"><input id="show-pokeidle" type="checkbox"><span><strong>Integração PokeIdle</strong><span>Conecte a lista oficial da Twitch.</span></span></label><label class="feature-option"><input id="show-bonuses" type="checkbox"><span><strong>Bônus e resgates</strong><span>Cadastre requisitos e acompanhe resgates.</span></span></label><label class="feature-option"><input id="show-history" type="checkbox"><span><strong>Histórico de XP e pontos</strong><span>Registre saldos para comparar ganhos.</span></span></label><label class="feature-option"><input id="show-schedule" type="checkbox"><span><strong>Automação de lives</strong><span>Acompanhe quando os canais entram e saem do ar.</span></span></label><p class="hint">Ocultar conserva seus dados e não desativa automações.</p></div></details>
     <details id="settings-panel"><summary>Limites de consumo e recuperação</summary><div class="panel-body">
       <p class="hint">A fila respeita os limites e a prioridade de cada canal. Salvar limites também ajusta as sessões abertas; os canais excedentes voltam para a fila. O uso de CPU e memória depende das páginas e não é medido pela extensão.</p>
+      <details id="kick-options" class="inline-options" hidden><summary>Padrão da Kick</summary><div class="panel-body"><label class="check-option"><input id="kick-live" type="checkbox" checked><span>Usar live na menor qualidade como padrão</span></label><p class="hint">Vale para canais no modo Padrão da Kick. As escolhas individuais de live ou chat são preservadas.</p></div></details>
       <form id="settings-form" class="stacked-form">
         <div class="form-grid"><label>Máximo de abas gerenciadas<input id="max-concurrent" type="number" min="1" max="12" step="1" value="3" required></label><label id="kick-limit-option" hidden>Máximo de vídeos Kick<input id="max-kick-lives" type="number" min="1" max="12" step="1" value="2" required></label></div>
         <label>Encerrar sessão após (min; 0 = sem prazo)<input id="session-minutes" type="number" min="0" max="1440" step="1" value="0" required></label>

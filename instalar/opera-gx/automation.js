@@ -11,9 +11,17 @@ export function operationalState(raw, channels) {
   };
 }
 
+export function kickUsesLive(state, item) {
+  if (item.platform !== 'kick') return false;
+  if (item.kickMode === 'live') return true;
+  if (item.kickMode === 'chat') return false;
+  return state.kickLive !== false;
+}
+
 export function availableSlot(state, item) {
-  if (Object.keys(state.sessions).length >= state.settings.maxConcurrent) return false;
-  if (item.platform !== 'kick' || !state.kickLive) return true;
+  if (item.platform === 'twitch' && state.liveWatch?.enabled) return true;
+  if (Object.values(state.sessions).filter(session => session.transport !== 'irc').length >= state.settings.maxConcurrent) return false;
+  if (!kickUsesLive(state, item)) return true;
   return Object.entries(state.sessions).filter(([id, session]) => session.media === 'live' && state.channels.some(c => c.id === id && c.platform === 'kick')).length < state.settings.maxKickLives;
 }
 

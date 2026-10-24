@@ -4,9 +4,9 @@ import path from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const checking = process.argv.includes('--check');
-const assets = ['rewards.js', 'pokeidle-state.js', 'ui-state.js', 'automation.js', 'core.js', 'background.js', 'popup.js', 'popup.html', 'popup.css', 'kick-quality.js', 'kick-player.js', 'site-status.js', 'pokeidle.js', 'icon.png'];
+const assets = ['rewards.js', 'pokeidle-state.js', 'ui-state.js', 'automation.js', 'twitch-chat.js', 'live-watch.js', 'core.js', 'background.js', 'popup.js', 'popup.html', 'popup.css', 'kick-quality.js', 'kick-player.js', 'site-status.js', 'pokeidle.js', 'icon.png'];
 const browsers = ['firefox', 'chromium', 'opera-gx', 'firefox-android'];
-const firefoxModules = new Set(['rewards.js', 'pokeidle-state.js', 'automation.js', 'core.js', 'background.js']);
+const firefoxModules = new Set(['rewards.js', 'pokeidle-state.js', 'automation.js', 'twitch-chat.js', 'live-watch.js', 'core.js', 'background.js']);
 const contentScripts = new Set(['kick-quality.js', 'site-status.js', 'pokeidle.js']);
 
 export async function expectedFiles(browser) {

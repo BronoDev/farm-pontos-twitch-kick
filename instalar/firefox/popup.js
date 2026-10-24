@@ -8,6 +8,7 @@ let busy = false;
 let lastState;
 let editingBonus = null;
 const openChannelOptions = new Set();
+let watchDraft = null;
 const numberFormat = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 });
 const formatNumber = value => Number.isFinite(value) ? numberFormat.format(value) : 'não informado';
 const formatTime = value => Number.isFinite(value) ? new Date(value).toLocaleString('pt-BR') : 'sem data';
@@ -58,31 +59,55 @@ function populateSelect(select, channels, global = false) {
 function fillChannelFields(state) {
   populateSelect($('#bonus-channel'), state.channels);
   populateSelect($('#measurement-channel'), state.channels, true);
-  const selected = new Set([...$('#schedule-channels').querySelectorAll('input:checked')].map(input => input.value));
-  const list = $('#schedule-channels');
+  const ids = watchDraft?.channelIds || state.liveWatch?.channelIds || [];
+  const selected = new Set(ids);
+  const selectAllInitially = !watchDraft && !ids.length;
+  const list = $('#watch-channels');
   list.replaceChildren();
-  if (!state.channels.length) empty(list, 'Adicione canais para criar uma agenda.');
+  if (!state.channels.length) empty(list, 'Adicione canais para configurar a automação.');
   for (const item of state.channels) {
     const label = element('label', '', 'check-option');
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.value = item.id;
-    checkbox.checked = selected.has(item.id);
+    checkbox.checked = selectAllInitially || selected.has(item.id);
+    checkbox.addEventListener('change', updateWatchDraft);
     label.append(checkbox, element('span', channelLabel(item.id)));
     list.append(label);
   }
 }
+function kickModeOptions(select, state) {
+  select.append(new Option(`Padrão (${state.kickLive !== false ? 'live mínima' : 'só chat'})`, 'default'), new Option('Live na menor qualidade', 'live'), new Option('Só chat', 'chat'));
+}
+function kickWantsLive(item, state) {
+  return item.kickMode === 'live' || (item.kickMode !== 'chat' && state.kickLive !== false);
+}
 function renderChannels(state) {
   const list = $('#channels');
+  const scrollTop = list.scrollTop;
   list.replaceChildren();
+  const query = $('#channel-search').value.trim().toLowerCase();
+  const filter = $('#channel-filter').value;
+  const filtered = query !== '' || filter !== 'all';
+  const channels = state.channels.filter(item => {
+    if (query && !`${item.platform} ${item.name} ${item.id}`.includes(query)) return false;
+    return filter === 'all' || (filter === 'active' && !!state.sessions[item.id]) || (filter === 'queued' && state.queue.includes(item.id)) || item.platform === filter;
+  });
+  $('#channel-toolbar').hidden = state.channels.length <= 5 && !filtered;
+  $('#channel-matches').hidden = !filtered;
+  $('#channel-matches').textContent = `${channels.length} de ${state.channels.length} canais neste filtro`;
   if (!state.channels.length) {
     const welcome = element('div', '', 'welcome');
     const symbol = element('span', '▷', 'welcome-symbol');
     symbol.setAttribute('aria-hidden', 'true');
-    welcome.append(symbol, element('h3', 'Pronto para começar?'), element('p', 'Adicione um canal acima ou conecte o PokeIdle. Seus controles aparecem aqui.'));
+    welcome.append(symbol, element('h3', 'Pronto para começar?'), element('p', 'Adicione um canal acima. Outras ferramentas ficam em Personalizar painel.'));
     list.append(welcome);
+  } else if (!channels.length) {
+    const noMatch = element('div', '', 'no-matches');
+    noMatch.append(element('p', 'Nenhum canal corresponde à busca ou ao filtro.'), action('Limpar filtros', resetChannelFilters));
+    list.append(noMatch);
   }
-  for (const item of state.channels) {
+  for (const item of channels) {
     const session = state.sessions[item.id];
     const row = element('div', '', 'row');
     const info = element('div', '', 'info');
@@ -91,7 +116,7 @@ function renderChannels(state) {
     const parts = [];
     if (!session) parts.push(state.queue.includes(item.id) ? `Na fila · posição ${state.queue.indexOf(item.id) + 1}` : 'Sessão fechada');
     else {
-      parts.push(session.media === 'live' ? `${item.platform === 'kick' ? 'Kick' : 'Twitch'} com vídeo` : 'Chat');
+      parts.push(session.transport === 'irc' ? 'Chat Twitch sem aba' : session.media === 'live' ? `${item.platform === 'kick' ? 'Kick' : 'Twitch'} com vídeo` : 'Chat');
       parts.push(`aberta às ${new Date(session.openedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`);
       const playback = session.playback;
       if (session.media === 'live') {
@@ -111,22 +136,35 @@ function renderChannels(state) {
         if (health.connection === 'offline') parts.push('sinal de conexão indisponível');
         if (health.live === 'offline') parts.push('canal reportado fora do ar');
         if (health.checkedAt) parts.push(`diagnóstico às ${new Date(health.checkedAt).toLocaleTimeString('pt-BR')}`);
-      } else parts.push('conexão e login não verificados');
+      } else if (session.transport !== 'irc') parts.push('conexão e login não verificados');
     }
-    let shortStatus = session ? session.media === 'live' ? 'Live em segundo plano' : 'Chat em segundo plano' : state.queue.includes(item.id) ? `Na fila · posição ${state.queue.indexOf(item.id) + 1}` : 'Pronto para iniciar';
+    let shortStatus = session ? session.media === 'live' ? session.playback?.playing ? `Live${session.playback.height ? ` · ${session.playback.height}p recebidos` : ' em reprodução'}` : 'Live · reprodução não confirmada' : 'Chat em segundo plano' : state.queue.includes(item.id) ? `Na fila · posição ${state.queue.indexOf(item.id) + 1}` : item.platform === 'kick' ? `${kickWantsLive(item, state) ? 'Live na menor qualidade' : 'Só chat'} · pronto para iniciar` : 'Pronto para iniciar';
     if (session?.playback?.qualityStatus === 'autoplay-blocked') shortStatus = 'Abra a aba para iniciar o vídeo';
     else if (session?.playback?.error) shortStatus = 'Confira o player na aba';
     else if (session?.health?.login === 'signed-out') shortStatus = 'Faça login na plataforma';
+    if (session?.transport === 'irc') shortStatus = state.twitchChat?.channels?.[item.name]?.joined ? 'Chat conectado · sem aba' : 'Chat · aguardando conexão';
     info.append(name, element('div', shortStatus, 'status'));
     row.append(info);
     const controls = element('div', '', 'actions');
     controls.append(action(session || state.queue.includes(item.id) ? 'Fechar' : 'Iniciar', { type: session || state.queue.includes(item.id) ? 'stop' : 'start', id: item.id }));
-    if (session) controls.append(action('Ver aba', { type: 'openSession', id: item.id }));
+    if (session && session.transport !== 'irc') controls.append(action('Ver aba', { type: 'openSession', id: item.id }));
     row.append(controls);
     const options = element('details', '', 'channel-options');
     options.open = openChannelOptions.has(item.id);
     options.append(element('summary', 'Opções do canal'));
     const optionBody = element('div', '', 'panel-body');
+    if (item.platform === 'kick') {
+      const modeLabel = element('label', 'Assistir na Kick', 'channel-setting');
+      const mode = document.createElement('select');
+      mode.setAttribute('data-kick-mode', item.id);
+      mode.setAttribute('aria-label', `Modo Kick de ${item.name}`);
+      kickModeOptions(mode, state);
+      mode.value = ['live', 'chat'].includes(item.kickMode) ? item.kickMode : 'default';
+      mode.addEventListener('change', () => command({ type: 'setKickMode', id: item.id, mode: mode.value }));
+      modeLabel.append(mode);
+      optionBody.append(modeLabel);
+      optionBody.append(element('p', 'Mudar o modo reinicia só esta sessão, se estiver aberta.', 'hint'));
+    }
     const label = element('label', 'Prioridade na fila', 'priority-label');
     const priority = document.createElement('select');
     priority.setAttribute('aria-label', `Prioridade de ${item.name}`);
@@ -143,6 +181,13 @@ function renderChannels(state) {
     row.append(options);
     list.append(row);
   }
+  list.scrollTop = scrollTop;
+}
+function resetChannelFilters() {
+  $('#channel-search').value = '';
+  $('#channel-filter').value = 'all';
+  $('#channels').scrollTop = 0;
+  if (lastState) renderChannels(lastState);
 }
 const POKEIDLE_OWNER = 'pokeidle:twitch';
 function renderPokeIdleChannels(state) {
@@ -175,6 +220,7 @@ function renderPokeIdle(state) {
   $('#pokeidle-connection').textContent = connected ? 'Conectado' : observed ? 'Aguardando leitura' : 'Não conectado';
   $('#pokeidle-connection').classList.toggle('connected', connected);
   $('#pokeidle-enabled').checked = source.enabled !== false;
+  $('#pokeidle-enabled').closest('label').hidden = state.liveWatch?.enabled === true;
   $('#pokeidle-official-count').textContent = String(channels.length);
   $('#pokeidle-live-bonus-count').textContent = String(channels.filter(item => item.live && item.bonus).length);
   $('#pokeidle-missing-count').textContent = String(channels.filter(item => item.missing).length);
@@ -192,7 +238,7 @@ function renderPokeIdle(state) {
   $('#pokeidle-rule-text').textContent = source.ruleText || 'Ainda sem regra recebida.';
   let waiting = '';
   if (source.enabled === false) waiting = 'Automação do PokeIdle desativada. Sessões manuais e canais Kick são preservados.';
-  else if (state.automationPaused) waiting = 'Automação pausada. Use Iniciar todos ou Retomar agenda para permitir novas aberturas.';
+  else if (state.automationPaused) waiting = 'Automação pausada. Use Iniciar todos ou Retomar automação para permitir novas aberturas.';
   else if (queued.length) waiting = `${queued.length} canais aguardam na fila automática. Limite atual: ${state.settings.maxConcurrent ?? 3} abas gerenciadas. Ajuste o limite em Limites de consumo se desejar; ele não aumenta automaticamente.`;
   else if (observed && source.connected === true && !stale && eligible.some(item => !state.sessions[`twitch:${item.name}`]?.ownerIds?.includes(POKEIDLE_OWNER))) waiting = 'Há canais ao vivo, com bônus e marcados faltantes sem sessão automática. Sincronize novamente e confira os limites.';
   $('#pokeidle-waiting').hidden = !waiting;
@@ -262,22 +308,37 @@ function renderHistory(state) {
   }
 }
 function renderSchedules(state) {
-  const list = $('#schedules');
+  const list = $('#watch-live-status');
   list.replaceChildren();
-  $('#automation-state').textContent = state.automationPaused ? 'Agenda e automação pausadas.' : 'Automação habilitada.';
-  $('#toggle-automation').textContent = state.automationPaused ? 'Retomar agenda' : 'Pausar agenda';
+  $('#automation-state').textContent = state.automationPaused ? 'Automação pausada.' : 'Automação habilitada.';
+  $('#toggle-automation').textContent = state.automationPaused ? 'Retomar automação' : 'Pausar automação';
   if (!uiPanelVisible(state, 'schedule')) return;
-  if (!state.schedules.length) empty(list, 'Sem horários cadastrados. A agenda inicia apenas as oportunidades que você configurar.');
-  for (const schedule of state.schedules) {
-    const phase = schedule.endedAt ? 'Encerrada' : !schedule.enabled ? 'Desativada' : schedule.startedAt ? 'Iniciada' : 'Agendada';
-    const node = card(schedule.channelIds.map(channelLabel).join(', '), phase);
-    node.append(element('p', `${formatTime(schedule.startsAt)} → ${formatTime(schedule.endsAt)}`));
-    const controls = element('div', '', 'actions');
-    if (!schedule.endedAt) controls.append(action(schedule.enabled ? 'Desativar' : 'Ativar', { type: 'toggleSchedule', id: schedule.id, enabled: !schedule.enabled }));
-    controls.append(action('Excluir horário', { type: 'removeSchedule', id: schedule.id }, 'danger'));
-    node.append(controls);
+  const watch = state.liveWatch || {};
+  $('#watch-enabled').checked = watchDraft?.enabled ?? watch.enabled === true;
+  $('#watch-now').hidden = watch.enabled !== true;
+  $('#watch-status').textContent = watch.enabled ? `Verifica os canais aproximadamente a cada minuto, com o navegador aberto.${watch.lastCheckedAt ? ` Última consulta: ${formatTime(watch.lastCheckedAt)}.` : ' Aguardando a primeira consulta.'}` : 'Ative para abrir e fechar sessões conforme o status real da live.';
+  const legacyCount = state.schedules.filter(item => item.enabled).length;
+  $('#legacy-schedules-note').hidden = !legacyCount;
+  $('#legacy-schedules-note').textContent = `${legacyCount} agendamento(s) antigo(s) serão desativados ao ligar esta automação. Os registros serão preservados.`;
+  const chat = state.twitchChat || {};
+  const joined = Object.values(chat.channels || {}).filter(channel => channel.joined).length;
+  $('#twitch-chat-status').textContent = chat.configured ? `${chat.login || 'Conta Twitch'} · ${chat.connected ? 'conectada' : 'aguardando conexão'} · ${joined} chat(s) confirmado(s).${chat.error ? ` ${chat.error}` : ''}` : 'Conecte sua conta para usar o chat em segundo plano, sem abrir abas.';
+  $('#disconnect-twitch-chat').hidden = !chat.configured;
+  updateTwitchSettingsVisibility(state);
+  for (const id of watch.channelIds || []) {
+    const sample = watch.statuses?.[id];
+    const node = card(channelLabel(id), sample?.live === true ? 'Ao vivo' : sample?.live === false ? 'Offline' : 'Status desconhecido');
+    node.append(element('p', sample?.checkedAt ? `Consulta: ${formatTime(sample.checkedAt)}` : 'Aguardando consulta.'));
     list.append(node);
   }
+}
+function updateTwitchSettingsVisibility(state = lastState) {
+  const selected = new Set(watchDraft?.channelIds || [...$('#watch-channels').querySelectorAll('input:checked')].map(input => input.value));
+  $('#twitch-chat-settings').hidden = !state?.twitchChat?.configured && !state?.channels.some(item => item.platform === 'twitch' && selected.has(item.id));
+}
+function updateWatchDraft() {
+  watchDraft = { enabled: $('#watch-enabled').checked, channelIds: [...$('#watch-channels').querySelectorAll('input:checked')].map(input => input.value) };
+  updateTwitchSettingsVisibility();
 }
 function renderAlerts(state) {
   const list = $('#alerts');
@@ -291,7 +352,7 @@ function renderAlerts(state) {
     node.append(element('strong', alert.title || 'Aviso'), element('p', alert.message || ''));
     if (alert.at) node.append(element('p', formatTime(alert.at), 'hint'));
     const controls = element('div', '', 'actions');
-    if (alert.channelId && state.sessions[alert.channelId]) controls.append(action('Ver aba', { type: 'openSession', id: alert.channelId }));
+    if (alert.channelId && state.sessions[alert.channelId] && state.sessions[alert.channelId].transport !== 'irc') controls.append(action('Ver aba', { type: 'openSession', id: alert.channelId }));
     controls.append(action('Dispensar aviso', { type: 'dismissAlert', id: alert.id }));
     node.append(controls);
     list.append(node);
@@ -302,7 +363,7 @@ function renderVisibility(state) {
   $('#session-controls').hidden = state.channels.length === 0;
   $('#kick-options').hidden = !hasKick;
   $('#kick-limit-option').hidden = !hasKick;
-  for (const panel of ['bonuses', 'history', 'schedule']) {
+  for (const panel of ['bonuses', 'history', 'schedule', 'pokeidle']) {
     const visible = uiPanelVisible(state, panel);
     $(`#${panel}-panel`).hidden = !visible;
     $(`#show-${panel}`).checked = visible;
@@ -313,7 +374,7 @@ function renderVisibility(state) {
   $('#xp-overview').hidden = !history;
   $('#bonus-overview').hidden = !bonuses;
   $('#bonus-form').hidden = state.channels.length === 0;
-  $('#schedule-form').hidden = state.channels.length === 0;
+  $('#watch-form').hidden = state.channels.length === 0;
   $('#optional-panels').hidden = !bonuses && !history && !uiPanelVisible(state, 'schedule') && !state.alerts.some(alert => !alert.read);
 }
 function render(state) {
@@ -321,8 +382,14 @@ function render(state) {
   lastState.summary ||= {};
   state = lastState;
   $('#kick-live').checked = state.kickLive;
+  const addMode = $('#add-kick-mode');
+  const selectedMode = addMode.value;
+  addMode.replaceChildren();
+  kickModeOptions(addMode, state);
+  addMode.value = selectedMode || 'default';
+  $('#add-kick-options').hidden = $('#platform').value !== 'kick';
   $('#summary').textContent = `${Object.keys(state.sessions).length} de ${state.channels.length} canais abertos`;
-  $('#queue-summary').textContent = state.queue.length ? `${state.queue.length} na fila: ${state.queue.map(channelLabel).join(', ')}` : 'Sem canais na fila.';
+  $('#queue-summary').textContent = `${state.queue.length} na fila · limite de ${state.settings.maxConcurrent ?? 3} abas`;
   $('#queue-summary').hidden = state.queue.length === 0;
   $('#xp-total').textContent = Number.isFinite(state.summary.totals?.xpDelta) ? `${formatNumber(state.summary.totals.xpDelta)} XP` : 'Sem comparação';
   $('#bonus-total').textContent = String((state.summary.bonusItems || []).filter(bonus => bonus.status === 'ready').length);
@@ -413,7 +480,7 @@ function resetBonus() {
   $('#bonus-cancel').hidden = true;
 }
 
-form('#add-form', () => command({ type: 'add', platform: $('#platform').value, input: $('#channel').value }));
+form('#add-form', () => command({ type: 'add', platform: $('#platform').value, input: $('#channel').value, ...($('#platform').value === 'kick' ? { kickMode: $('#add-kick-mode').value } : {}) }));
 form('#bonus-form', async () => {
   const bonus = { channelId: $('#bonus-channel').value, title: $('#bonus-title').value.trim(), requirements: $('#bonus-requirements').value.trim(), sourceUrl: $('#bonus-source').value.trim(), verified: $('#bonus-verified').checked, requirementsMet: $('#bonus-requirements-met').checked, requiredMinutes: numeric('#bonus-minutes'), pointCost: numeric('#bonus-points'), cooldownMinutes: numeric('#bonus-cooldown'), expiresAt: timestamp('#bonus-expiry', true) };
   const message = editingBonus ? { type: 'updateBonus', id: editingBonus, patch: bonus } : { type: 'addBonus', bonus };
@@ -429,29 +496,34 @@ form('#measurement-form', async () => {
     $('#measurement-at').value = localInput(Date.now());
   }
 });
-form('#schedule-form', async () => {
-  const channelIds = [...$('#schedule-channels').querySelectorAll('input:checked')].map(input => input.value);
-  if (!channelIds.length) throw new Error('Selecione ao menos um canal para agendar.');
-  const schedule = { channelIds, startsAt: timestamp('#schedule-start'), endsAt: timestamp('#schedule-end') };
-  if (schedule.endsAt <= schedule.startsAt) throw new Error('O fim precisa ser depois do início.');
-  if (await command({ type: 'addSchedule', schedule })) $('#schedule-form').reset();
+form('#watch-form', async () => {
+  updateWatchDraft();
+  if (watchDraft.enabled && !watchDraft.channelIds.length) throw new Error('Selecione ao menos um canal para acompanhar.');
+  if (await command({ type: 'setLiveWatch', ...watchDraft })) watchDraft = null;
 });
 form('#settings-form', () => command({ type: 'setSettings', settings: { maxConcurrent: numeric('#max-concurrent'), maxKickLives: numeric('#max-kick-lives'), sessionMinutes: numeric('#session-minutes'), notifications: $('#notifications-enabled').checked, autoReconnect: $('#auto-reconnect').checked } }));
 $('#refresh').addEventListener('click', () => command({ type: 'status' }));
 $('#open-dashboard').addEventListener('click', () => command({ type: 'openDashboard' }));
-for (const panel of ['bonuses', 'history', 'schedule']) {
+for (const panel of ['bonuses', 'history', 'schedule', 'pokeidle']) {
   $(`#show-${panel}`).addEventListener('change', async event => {
     const visible = event.target.checked;
     if (await command({ type: 'setUiPanel', panel, visible })) {
       const target = $(`#${panel}-panel`);
-      target.open = visible;
+      if (target.tagName === 'DETAILS') target.open = visible;
       if (visible) target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
   });
 }
 $('#platform').addEventListener('change', event => {
   $('#channel').placeholder = event.target.value === 'kick' ? 'yetz ou https://kick.com/yetz' : 'Canal ou https://www.twitch.tv/canal';
+  $('#add-kick-options').hidden = event.target.value !== 'kick';
 });
+for (const selector of ['#channel-search', '#channel-filter']) {
+  $(selector).addEventListener(selector.endsWith('search') ? 'input' : 'change', () => {
+    $('#channels').scrollTop = 0;
+    if (lastState) renderChannels(lastState);
+  });
+}
 $('#open-pokeidle').addEventListener('click', () => command({ type: 'openPokeIdle' }));
 $('#refresh-pokeidle').addEventListener('click', () => command({ type: 'refreshPokeIdle' }));
 $('#pokeidle-enabled').addEventListener('change', event => command({ type: 'setPokeIdle', enabled: event.target.checked }));
@@ -460,7 +532,15 @@ $('#kick-live').addEventListener('change', event => command({ type: 'setKickLive
 $('#start-all').addEventListener('click', () => command({ type: 'startAll' }));
 $('#stop-all').addEventListener('click', () => command({ type: 'stopAll' }));
 $('#bonus-cancel').addEventListener('click', resetBonus);
+$('#watch-enabled').addEventListener('change', updateWatchDraft);
+$('#watch-now').addEventListener('click', () => command({ type: 'watchNow' }));
+$('#connect-twitch-chat').addEventListener('click', async () => {
+  const token = $('#twitch-token').value.trim();
+  $('#twitch-token').value = '';
+  if (!token) { error('Informe a credencial de chat neste navegador.'); return; }
+  await command({ type: 'configureTwitchChat', token });
+});
+$('#disconnect-twitch-chat').addEventListener('click', () => command({ type: 'disconnectTwitchChat', forget: true }));
 $('#toggle-automation').addEventListener('click', () => command({ type: lastState?.automationPaused ? 'resumeAutomation' : 'pauseAutomation' }));
 $('#measurement-at').value = localInput(Date.now());
-$('#schedule-timezone').textContent = `Horários no fuso deste navegador: ${Intl.DateTimeFormat().resolvedOptions().timeZone || 'local'}.`;
 command({ type: 'status' });

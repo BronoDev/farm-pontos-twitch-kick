@@ -1,19 +1,37 @@
-# Live Kick com vídeo econômico
+# Escolher chat ou live na Kick
 
 ## Como usar
 
 1. Atualize a extensão na mesma pasta já instalada e clique em Recarregar. Autorize o acesso à Kick quando o navegador solicitar.
 2. Entre na sua conta da Kick no mesmo navegador.
-3. Mantenha marcada **Kick: reproduzir live e tentar a menor qualidade disponível** e clique em **Iniciar todos**. Canais Kick já cadastrados também usam esse modo; a Twitch iniciada manualmente continua com chat. No modo automático PokeIdle da versão0.7, as lives Twitch elegíveis também abrem com vídeo silencioso e tentativa de menor qualidade.
+3. Ao adicionar um canal Kick, escolha **Live na menor qualidade**. Para um canal já cadastrado, escolha o modo em **Opções do canal**. Clique em **Iniciar** no canal ou **Iniciar todos** para iniciar as sessões, respeitando seus limites.
 4. Abra uma aba Kick uma vez e confira se está reproduzindo; pode ser necessário clicar em play para liberar autoplay. Abra as configurações do player e confira a qualidade.
-5. Volte ao painel e clique em **Atualizar**. Compare o estado de reprodução, a menor opção solicitada e a resolução recebida, com o horário da amostra. O painel não atualiza esses valores continuamente.
-6. **Fechar todos** encerra também as abas de vídeo e mantém a lista. Desmarcar o modo de vídeo reinicia as sessões Kick abertas como chat apenas.
+5. Volte ao painel e clique em **Atualizar**. Compare a resolução recebida com a menor opção solicitada nos detalhes do canal, incluindo o horário da amostra. Esses valores não são uma medição de consumo ou um recibo de pontos.
+6. **Fechar todos** encerra também as abas de vídeo e mantém a lista. Escolha **Só chat** no canal para usar apenas o chat. Alterar o modo migra somente sua sessão aberta e não inicia um canal fechado.
+
+## Padrão geral e escolhas individuais
+
+Cada canal Kick pode usar um destes modos:
+
+| Escolha | Uso |
+| --- | --- |
+| Padrão da Kick | Segue a opção geral de reprodução. Canais de versões anteriores continuam com seu comportamento anterior. |
+| Live na menor qualidade | Usa a página oficial do canal com vídeo silencioso e tentativa da menor resolução oferecida. |
+| Só chat | Usa apenas o chat, sem automação de vídeo. |
+
+A opção geral de reprodução fica em **Limites de consumo e recuperação → Reprodução na Kick** e só altera os canais em **Padrão da Kick**. Canais com uma escolha individual de live ou chat são preservados. Se a mudança de um canal aberto precisar de uma vaga de vídeo indisponível, a sessão entra na fila. O máximo de vídeos Kick conta apenas lives Kick; chats Kick e lives Twitch continuam sujeitos ao limite global de abas.
+
+A escolha do modo não desfaz uma pausa ou inicia um canal fechado. O controle **Fechar todos** mantém sua função de fechar sessões gerenciadas e pausar a automação. O modo chat não comprova recebimento de pontos cujo requisito seja assistir à live.
 
 ## O que o script tenta fazer
 
-O script roda nas páginas Kick e Twitch, mas só atua quando o controlador confirma uma sessão gerenciada em modo de vídeo, o identificador da aba e sua URL exata. A Twitch manual em modo de chat não recebe essa automação de player. Ele silencia o elemento de vídeo e tenta `play()` uma vez por elemento encontrado. Durante a inicialização, faz um número limitado de tentativas de reconhecer controles de Settings/Quality ou Configurações/Qualidade e selecionar a menor resolução numérica disponível, como 160p. Não seleciona modo de áudio apenas. Não mantém um loop de cliques nem força reprodução após uma pausa do usuário.
+O script roda nas páginas Kick e Twitch, mas só atua quando o controlador confirma uma sessão gerenciada em modo de vídeo, o identificador da aba e sua URL exata. A Twitch manual em modo de chat não recebe essa automação de player. Ele silencia o elemento de vídeo, tenta iniciar reprodução inline e procura a menor resolução numérica nos controles oficiais, como 160p quando essa variante existe. Não seleciona modo de áudio apenas. As tentativas são limitadas, sem um loop contínuo de cliques ou reprodução forçada após uma pausa do usuário.
 
-As tentativas terminam após encontrar uma opção ou após cerca de 36 segundos. Depois disso, o script apenas relata eventos do vídeo (reprodução, pausa, metadados, mudança de resolução, erro), com agrupamento de mensagens. Ele não acompanha substituições tardias do player, não recupera automaticamente um canal que entra ao vivo horas depois e para de atuar se você navegar para outra URL.
+O painel recebe eventos de reprodução, pausa, metadados, mudança de resolução e erro, com agrupamento de mensagens. A busca de controles fica no contêiner do player e nos menus associados; opções de qualidade que pertencem a outra parte da página são ignoradas.
+
+Após identificar o player, o script acompanha trocas do elemento de vídeo dentro desse contêiner, com limite de três reinicializações adicionais por documento. Não observa o site inteiro nem acompanha uma substituição do contêiner completo. Uma pausa detectada é preservada entre trocas de vídeo. Mudanças na estrutura do site ainda podem impedir o ajuste de qualidade.
+
+O script de player não consulta se uma live começou; essa descoberta pertence à [automação de lives](AUTOMACAO.md). O controle do player para ao sair da URL gerenciada.
 
 O código não altera playlists, limites da plataforma, anúncios, DRM, API privada, visibilidade da página ou contagem de audiência. Ele também não deixa de carregar quadros para simular vídeo ativo. A transmissão continua sendo a oficial.
 

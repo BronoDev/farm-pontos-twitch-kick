@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Chat Leve — Twitch e Kick",
   "description": "Organize bônus PokeIdle, lives Twitch/Kick e consumo em segundo plano.",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "permissions": [
     "storage",
     "tabs",
@@ -11,7 +11,9 @@
     "alarms",
     "notifications",
     "https://www.twitch.tv/*",
-    "https://pokeidle.io/*"
+    "https://pokeidle.io/*",
+    "https://id.twitch.tv/*",
+    "https://api.twitch.tv/*"
   ],
   "background": {
     "scripts": [
@@ -19,6 +21,8 @@
       "pokeidle-state.js",
       "automation.js",
       "ui-state-background.js",
+      "live-watch.js",
+      "twitch-chat.js",
       "core.js",
       "background.js"
     ],

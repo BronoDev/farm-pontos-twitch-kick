@@ -38,7 +38,40 @@ test('interface nova começa sem painéis extras e normaliza somente escolhas bo
   assert.equal(uiPanelVisible({}, 'bonuses'), false);
   assert.equal(uiPanelVisible({}, 'history'), false);
   assert.equal(uiPanelVisible({}, 'schedule'), false);
+  assert.equal(uiPanelVisible({}, 'pokeidle'), false);
   assert.equal(uiPanelVisible({ bonuses: [{}] }, 'toString'), false);
+});
+
+test('PokeIdle aparece após leitura válida, sem exigir conexão atual, e respeita escolha explícita', () => {
+  assert.deepEqual(normalizeUiPreferences({ panels: { pokeidle: true } }), { panels: { pokeidle: true } });
+  for (const observedAt of [null, undefined, 0, -1, Infinity, NaN, '1800000000000']) {
+    assert.equal(uiPanelVisible({ pokeidle: { observedAt, connected: true } }, 'pokeidle'), false);
+  }
+  assert.equal(uiPanelVisible({ pokeidle: { observedAt: 1800000000000, connected: false } }, 'pokeidle'), true);
+  assert.equal(uiPanelVisible({ pokeidle: { observedAt: 1800000000000 }, uiPreferences: { panels: { pokeidle: false } } }, 'pokeidle'), false);
+  assert.equal(uiPanelVisible({ uiPreferences: { panels: { pokeidle: true } } }, 'pokeidle'), true);
+});
+
+test('ocultar PokeIdle persiste sem desativar automação nem retirar canais ou sessões automáticas', async t => {
+  t.mock.method(Date, 'now', () => 1800000000000);
+  const b = browser();
+  b.tabs.set(90, { id: 90, url: 'https://pokeidle.io/app' });
+  await b.run({ type: 'pokeidleSnapshot', snapshot: { ready: true, channels: [
+    { name: 'tftoddy', live: true, bonus: true, missing: true }
+  ] } }, { tab: { id: 90 }, url: 'https://pokeidle.io/app', frameId: 0 });
+  const before = await b.run({ type: 'status' });
+  assert.equal(uiPanelVisible(before, 'pokeidle'), true);
+  await b.run({ type: 'setUiPanel', panel: 'pokeidle', visible: false });
+  const hidden = await createController(b.api)({ type: 'status' });
+  assert.equal(uiPanelVisible(hidden, 'pokeidle'), false);
+  assert.equal(hidden.pokeidle.enabled, true);
+  for (const key of ['channels', 'sessions', 'queue', 'automationPaused', 'pokeidle']) assert.deepEqual(hidden[key], before[key]);
+  assert.deepEqual(hidden.uiPreferences.panels, { pokeidle: false });
+  assert.equal(b.opened.length, 1);
+  assert.deepEqual(b.removed, []);
+  const shown = await b.run({ type: 'setUiPanel', panel: 'pokeidle', visible: true });
+  assert.equal(uiPanelVisible(shown, 'pokeidle'), true);
+  assert.deepEqual(shown.sessions, before.sessions);
 });
 
 test('migração revela os painéis com dados existentes e preserva preferências explícitas', () => {

@@ -1,6 +1,6 @@
 # Chat Leve — Twitch, Kick e PokeIdle
 
-Extensão local para organizar sessões, bônus e resgates. A Kick abre o player oficial em segundo plano e tenta a menor qualidade disponível. A Twitch cadastrada manualmente usa chat; o modo automático PokeIdle pode abrir a live Twitch com vídeo silencioso a partir dos sinais exibidos no próprio jogo. O painel reúne checklist de bônus, leituras manuais de XP/pontos, alertas, agenda e uma fila com limites de consumo. Não há servidor próprio ou dependências de aplicação para instalar.
+Extensão local para organizar sessões, bônus e resgates. Na Kick, escolha por canal entre chat e live com tentativa de menor qualidade disponível. A automação acompanha o estado das lives e pode conectar a Twitch pelo chat oficial sem abrir uma aba, usando sua autorização. O painel reúne checklist de bônus, leituras manuais de XP/pontos, alertas e uma fila com limites de consumo. Não há servidor próprio ou dependências de aplicação para instalar.
 
 Veja a [prévia do painel no computador](docs/imagens/painel-desktop.png), com dados de teste, e o guia de [configuração da interface](docs/INTERFACE.md).
 
@@ -23,11 +23,11 @@ Os ZIPs são fontes de desenvolvimento sem assinatura. Para uma instalação Fir
 
 O painel tem uma visualização compacta no menu da extensão e pode ser aberto em uma aba para usar a largura disponível no computador. Em telas menores, as seções passam para uma coluna.
 
-Os canais e seus controles ficam em destaque. As opções de vídeo Kick aparecem depois de adicionar um canal Kick. O PokeIdle começa com uma configuração curta; os detalhes de canais, regra e sincronização aparecem quando houver uma leitura da página.
+Os canais e seus controles ficam em destaque. As opções de vídeo Kick aparecem ao selecionar Kick no cadastro e nos detalhes de cada canal. Com mais de cinco canais, busca e filtros ajudam a reduzir a lista sem interromper as sessões.
 
-Em **Personalizar painel**, escolha os recursos que quer mostrar: checklist de bônus, histórico manual de XP/pontos e agenda. A escolha fica salva neste navegador. Ao atualizar uma instalação que já tem registros, o painel correspondente continua disponível. Ocultar uma seção conserva seus dados e não desativa uma agenda existente.
+Em **Personalizar painel**, escolha os recursos que quer mostrar: PokeIdle, checklist de bônus, histórico manual de XP/pontos e automação de lives. A escolha fica salva neste navegador. Ao atualizar uma instalação que já tem registros ou uma leitura PokeIdle, o painel correspondente continua disponível. Ocultar uma seção conserva seus dados e não desativa uma automação existente.
 
-Prioridade e diagnóstico de cada canal ficam nos detalhes do próprio canal. O resumo de recompensas aparece conforme os recursos escolhidos; avisos aparecem quando há pendências. Veja [INTERFACE.md](docs/INTERFACE.md) para configurar a apresentação.
+Modo da Kick, prioridade e diagnóstico de cada canal ficam nos detalhes do próprio canal. O resumo de recompensas aparece conforme os recursos escolhidos; avisos aparecem quando há pendências. Veja [INTERFACE.md](docs/INTERFACE.md) para configurar a apresentação.
 
 ## Bônus, saldos e resgates
 
@@ -39,9 +39,21 @@ Prioridade e diagnóstico de cada canal ficam nos detalhes do próprio canal. O 
 
 O histórico de XP/pontos continua manual. A integração PokeIdle lê o widget de canais da página aberta no navegador; não consulta uma API de saldo nem registra XP automaticamente. Os sinais do widget, os registros locais e a reprodução não comprovam concessão de XP. Confira os saldos oficiais.
 
-## Automação pelo widget PokeIdle
+## Automação de lives
 
-1. Entre no PokeIdle e mantenha aberta a página `https://pokeidle.io/app`, com o widget de canais carregado. A extensão lê somente a lista `.tw-canais` e seus canais `.tw-canal`, não credenciais ou mensagens.
+Habilite **Automação de lives** em **Personalizar painel**, escolha os canais, ative o monitoramento e clique em **Salvar automação**. A Kick abre o modo escolhido quando recebe um sinal de live; um sinal explícito de offline encerra somente a participação dessa automação. Erros de API e respostas desconhecidas não viram offline.
+
+A Twitch pode usar o IRC oficial sem player ou aba, com um token de usuário autorizado para `chat:read`, inserido somente no campo local da extensão. O painel informa autenticação, conexão e entrada no canal. Conectar ao chat não comprova que o serviço concederá pontos ou XP. O novo modo não depende da página PokeIdle aberta.
+
+Pausar interrompe também as consultas periódicas. **Verificar agora** atualiza os sinais manualmente sem desfazer a pausa nem reabrir sessões.
+
+Esse fluxo substitui a configuração de horários. Na primeira leitura da versão nova, os horários legados são desativados sem apagar os dados. Ativar o monitoramento também desativa a abertura automática pelo widget PokeIdle, que não pode ser reabilitada enquanto ele estiver ativo. Desligar o monitoramento não reativa essas origens. Consulte [AUTOMACAO.md](docs/AUTOMACAO.md) para configurar o OAuth oficial, os canais e as pausas.
+
+## Widget PokeIdle: canais e modo anterior
+
+O widget continua disponível como fonte de canais e regras. O modo anterior de abertura de vídeos pelo widget é desativado quando você habilita a automação de lives descrita acima.
+
+1. Habilite PokeIdle em **Personalizar painel**. Entre no jogo e mantenha aberta a página `https://pokeidle.io/app`, com o widget de canais carregado. A extensão lê somente a lista `.tw-canais` e seus canais `.tw-canal`, não credenciais ou mensagens.
 2. Confira os canais e as informações de bônus importadas da interface do jogo. O texto da regra é preservado como exibido, incluindo os valores `+15%` e `+2,5%`; esses valores não são convertidos em um crédito de XP confirmado.
 3. Mantenha marcada a opção **Automatizar Twitch do PokeIdle**. Para iniciar uma nova live, o canal precisa estar ao vivo (`ao-vivo`), com bônus (`com-bonus`) e marcado pelo widget como faltante para você (`tw-falta-eu`).
 4. A extensão abre a página oficial Twitch com vídeo silencioso e tenta a menor qualidade disponível. O limite global vem em **três sessões simultâneas por padrão** e pode ser ajustado no painel, de 1 a 12. Os demais canais elegíveis aguardam na fila. Para abrir oito canais elegíveis de uma vez, configure o limite em pelo menos oito e não ocupe vagas com outras sessões; isso aumenta o consumo de rede, CPU/GPU e memória.
@@ -55,16 +67,17 @@ Remover um canal importado impede sua reimportação automática. Para incluí-l
 
 Veja [POKEIDLE.md](docs/POKEIDLE.md) para os sinais usados, limites e validação no seu navegador.
 
-## Agenda, fila e limites
+## Fila, pausas e limites
 
 - **Iniciar todos** habilita a fila; abre somente o que couber nos limites, considerando a prioridade cadastrada.
-- **Fechar todos** limpa a fila, fecha as abas gerenciadas e pausa a automação para impedir reabertura. Os canais continuam cadastrados. Retome com **Iniciar todos** ou **Retomar agenda**.
-- **Iniciar** individual abre apenas aquele canal e preserva uma pausa global da agenda. **Fechar** individual cancela sua entrada na fila e pausa aquele canal até uma retomada explícita. Fechar uma aba manualmente também é respeitado.
+- **Fechar todos** limpa a fila, fecha as sessões gerenciadas e pausa a automação para impedir reabertura. Os canais continuam cadastrados. Retome com **Iniciar todos** ou pelo controle de retomada da automação.
+- **Iniciar** individual abre apenas aquele canal e preserva uma pausa global da automação. **Fechar** individual cancela sua entrada na fila e pausa aquele canal até uma retomada explícita. Fechar uma aba manualmente também é respeitado.
 - Em **Limites**, configure máximo de abas, máximo de vídeos Kick e duração por sessão. Reduzir limites devolve sessões excedentes de menor prioridade à fila. A fila avança quando uma sessão termina, respeitando os limites; um vídeo Kick à espera não bloqueia uma vaga possível para chat Twitch.
-- Em **Agenda**, escolha canais e início/fim no seu horário local. A extensão abre a oportunidade no horário e fecha as sessões que pertencem a ela ao terminar. Uma aba iniciada manualmente antes da agenda é preservada. Horários sobrepostos compartilham uma sessão; enquanto existir um proprietário ativo, ela permanece.
-- Os alarmes verificam a agenda aproximadamente a cada minuto, com o navegador em execução. Android/suspensão podem atrasar eventos. A agenda usa horários cadastrados. A descoberta de canais Twitch ao vivo no modo PokeIdle usa separadamente o widget aberto do jogo; não uma API externa de lives.
+- Chats Twitch conectados por IRC não usam abas e não consomem o limite global de abas nem o limite de vídeos Kick.
+- Em **Automação de lives**, escolha os canais para monitorar em vez de cadastrar horários. Uma sessão manual é preservada quando a participação automática termina.
+- Os alarmes verificam os estados aproximadamente a cada minuto, com o navegador em execução. Android e suspensão podem atrasar eventos. A Twitch usa os serviços oficiais de autenticação, estado das lives e chat; a Kick usa a resposta de estado do próprio serviço.
 
-As abas ficam em segundo plano e continuam na barra do navegador. Fechar o painel não as encerra. As configurações e a fila persistem, mas processos e autenticação dependem do navegador; não se presume que sobrevivam a reinícios.
+As abas Kick e as sessões manuais ficam em segundo plano e continuam na barra do navegador. O chat Twitch automático pode funcionar sem aba. Fechar o painel não encerra as sessões. As configurações e a fila persistem, mas processos e autenticação dependem do navegador; não se presume que sobrevivam a reinícios.
 
 ## Diagnóstico e recuperação
 
@@ -74,19 +87,30 @@ Alertas vão para a central e, quando permitido, para notificações locais. Um 
 
 **Recuperação é opcional e vem desativada.** Quando ativada, tenta recarregar uma sessão com erro explícito de mídia/conexão até três vezes, com espera crescente. Uma pausa de vídeo sem erro não dispara recuperação. Não reabre uma aba fechada manualmente ou sessões após Fechar todos. Login e bloqueio de autoplay podem exigir ação sua.
 
-## Vídeo Kick econômico
+## Chat ou live na Kick
 
-A opção de vídeo vale para canais Kick já cadastrados e vem ativada. Lives Twitch iniciadas pelo modo automático PokeIdle também usam o player oficial; os canais Twitch iniciados manualmente continuam em chat. Clique em Iniciar todos após atualizar para migrar sessões antigas. O script tenta áudio silenciado, reprodução inline e a menor resolução numérica nos controles oficiais durante uma janela limitada de inicialização. Depois relata eventos do vídeo, sem loop contínuo de cliques.
+Ao adicionar um canal Kick, escolha seu modo. Para um canal já cadastrado, abra **Opções do canal**:
+
+| Modo | Comportamento |
+| --- | --- |
+| Padrão da Kick | Segue a opção geral de reprodução na Kick. Mantém a escolha das instalações anteriores. |
+| Live na menor qualidade | Abre a página oficial do canal, silencia o vídeo e tenta selecionar a menor resolução numérica oferecida. |
+| Só chat | Abre apenas o chat. Esse modo não comprova concessão de pontos que dependam de assistir ao vídeo. |
+
+Alterar o modo de um canal aberto migra somente sua sessão. Um canal fechado não é iniciado por essa mudança, e **Fechar todos** continua impedindo reabertura automática. A opção geral, em **Limites de consumo e recuperação → Reprodução na Kick**, vale para os canais em **Padrão da Kick**; escolhas individuais de live ou chat são mantidas. O limite de vídeos Kick conta apenas lives Kick abertas, junto do limite global de sessões.
+
+Lives Twitch iniciadas pelo modo automático PokeIdle também usam o player oficial; os canais Twitch iniciados manualmente continuam em chat. O script tenta áudio silenciado, reprodução inline e a menor resolução numérica nos controles oficiais, com tentativas limitadas e sem um loop contínuo de cliques.
 
 O painel distingue **qualidade solicitada** de **resolução recebida**. Não cria uma variante menor que a transmitida pelo canal; diminuir CSS não reduz o stream. Se os controles não forem reconhecidos, ajuste manualmente; autoplay pode exigir abrir a aba e tocar em play. Não há benchmark de CPU/memória ou garantia de pontos. Detalhes em [KICK-VIDEO.md](docs/KICK-VIDEO.md).
 
 ## Dados e permissões
 
-- `storage`: canais, fila, checklist, leituras manuais, horários, avisos, amostras e preferências de apresentação ficam neste navegador.
+- `storage`: canais, fila, checklist, leituras manuais, registros legados, avisos, amostras, preferências e a autorização Twitch fornecida por você ficam neste navegador. O token não é retornado no estado público do painel.
 - `tabs`: cria/fecha apenas abas gerenciadas e confere sua URL; preserva abas pessoais e abas reaproveitadas para outro site.
-- `alarms`: agenda e verificação periódica de limites/avisos com o navegador aberto.
+- `alarms`: monitoramento de lives e verificação periódica de limites/avisos com o navegador aberto.
 - `notifications`: lembretes locais; se indisponíveis, os avisos permanecem no painel.
-- Acesso a Kick/Twitch: scripts locais de diagnóstico e player, restritos ao identificador e URL de uma aba gerenciada. Não lê cookies, credenciais ou mensagens de chat.
+- Acesso a Kick/Twitch: scripts locais de diagnóstico e player, restritos ao identificador e URL de uma aba gerenciada, além da consulta de estado Kick. Os scripts de página não coletam cookies, credenciais ou histórico de mensagens.
+- Acesso a `id.twitch.tv` e `api.twitch.tv`: valida a autorização Twitch e consulta o estado das lives. O chat sem aba usa o WebSocket oficial da Twitch; não envia mensagens para simular atividade.
 - Acesso a `pokeidle.io`: o script lê os links, estados e texto de regra do widget de canais em `/app`; não lê saldo, senha ou cookies. As informações ficam localmente na extensão.
 
 Nenhum saldo ou histórico é enviado a um servidor próprio. As páginas oficiais continuam fazendo suas próprias conexões. Chaves AMO pertencem somente ao processo de assinatura, via variáveis seguras; não fazem parte da extensão.
