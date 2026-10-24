@@ -47,3 +47,7 @@ Se escolher o modo avançado IRC sem nenhuma aba, a conexão de conta aparece pa
 Confira o painel no menu e em uma aba, abra os detalhes de um canal e revise a idade dos sinais. No Android, o navegador pode suspender abas, alarmes e conexões ao trocar de aplicativo ou bloquear a tela.
 
 Chat conectado, vídeo ativo e registro local não comprovam crédito de XP. Leia [VALIDACAO.md](VALIDACAO.md) para os testes e seus limites.
+
+## Painel 0.11.1
+
+O painel usa o PokeIdle como origem principal, visível desde o primeiro acesso. O cadastro e a lista manual de streamers foram retirados da apresentação. Abra o jogo e carregue seus canais para sincronizar; a Kick conserva sua sincronização dedicada. Retomar automação respeita a elegibilidade dos canais e os limites, sem iniciar todos os registros manualmente. Dados anteriores continuam armazenados.

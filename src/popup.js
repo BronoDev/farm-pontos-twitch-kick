@@ -424,7 +424,7 @@ function renderVisibility(state) {
   $('#kick-options').hidden = !hasKick;
   $('#kick-limit-option').hidden = !hasKick;
   for (const panel of ['bonuses', 'history', 'schedule', 'pokeidle']) {
-    const visible = uiPanelVisible(state, panel);
+    const visible = panel === 'pokeidle' ? true : panel === 'schedule' ? false : uiPanelVisible(state, panel);
     $(`#${panel}-panel`).hidden = !visible;
     $(`#show-${panel}`).checked = visible;
   }
@@ -453,7 +453,9 @@ function render(state) {
   $('#queue-summary').hidden = state.queue.length === 0;
   $('#xp-total').textContent = Number.isFinite(state.summary.totals?.xpDelta) ? `${formatNumber(state.summary.totals.xpDelta)} XP` : 'Sem comparação';
   $('#bonus-total').textContent = String((state.summary.bonusItems || []).filter(bonus => bonus.status === 'ready').length);
-  renderChannels(state);
+  $('#channels').replaceChildren();
+  $('#channel-toolbar').hidden = true;
+  $('#channel-matches').hidden = true;
   renderPokeIdle(state);
   fillChannelFields(state);
   if (uiPanelVisible(state, 'bonuses')) renderBonuses(state);
@@ -598,7 +600,7 @@ $('#pokeidle-kick-enabled').addEventListener('change', event => command({ type: 
 $('#pokeidle-enabled').addEventListener('change', event => command({ type: 'setPokeIdle', enabled: event.target.checked }));
 $('#pokeidle-filter').addEventListener('change', () => { if (lastState) renderPokeIdleChannels(lastState); });
 $('#kick-live').addEventListener('change', event => command({ type: 'setKickLive', enabled: event.target.checked }));
-$('#start-all').addEventListener('click', () => command({ type: 'startAll' }));
+$('#start-all').addEventListener('click', () => command({ type: 'resumeAutomation' }));
 $('#stop-all').addEventListener('click', () => command({ type: 'stopAll' }));
 $('#bonus-cancel').addEventListener('click', resetBonus);
 $('#watch-enabled').addEventListener('change', updateWatchDraft);

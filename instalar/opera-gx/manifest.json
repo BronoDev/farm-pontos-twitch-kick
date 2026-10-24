@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Chat Leve — Twitch e Kick",
   "description": "Chat Twitch sem player, lives Kick e canais PokeIdle em segundo plano.",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "minimum_chrome_version": "116",
   "permissions": [
     "storage",

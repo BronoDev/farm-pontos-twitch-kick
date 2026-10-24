@@ -1,6 +1,6 @@
 {
   "name": "chat-leve",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "private": true,
   "type": "module",
   "description": "Chat Twitch sem player, lives Kick e canais PokeIdle em segundo plano",
