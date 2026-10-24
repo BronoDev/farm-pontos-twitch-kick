@@ -1,6 +1,7 @@
 export function operationalState(raw, channels) {
   const valid = new Set(channels.map(c => c.id));
   return {
+    unlimitedAutomation: raw.unlimitedAutomation === true,
     queue: Array.isArray(raw.queue) ? [...new Set(raw.queue.filter(id => valid.has(id)))] : [],
     queueSources: raw.queueSources && typeof raw.queueSources === 'object' ? raw.queueSources : {},
     alerts: Array.isArray(raw.alerts) ? raw.alerts.slice(-100) : [],
@@ -19,6 +20,7 @@ export function kickUsesLive(state, item) {
 }
 
 export function availableSlot(state, item) {
+  if (state.unlimitedAutomation) return true;
   if (item.platform === 'twitch' && state.liveWatch?.enabled && state.liveWatch.twitchMode === 'irc') return true;
   if (Object.values(state.sessions).filter(session => session.transport !== 'irc').length >= state.settings.maxConcurrent) return false;
   if (!kickUsesLive(state, item)) return true;

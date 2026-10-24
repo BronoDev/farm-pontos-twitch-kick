@@ -291,7 +291,7 @@ function renderPokeIdle(state) {
   let waiting = '';
   if (source.enabled === false) waiting = 'Automação do PokeIdle desativada. Sessões iniciadas manualmente são preservadas.';
   else if (state.automationPaused) waiting = 'Automação pausada. Use Iniciar todos ou Retomar automação para permitir novas aberturas.';
-  else if (queued.length) waiting = `${queued.length} canais aguardam na fila automática. Limite atual: ${state.settings.maxConcurrent ?? 3} abas gerenciadas. Ajuste o limite em Limites de consumo se desejar; ele não aumenta automaticamente.`;
+  else if (queued.length) waiting = `${queued.length} canais aguardam abertura. Não há limite de abas simultâneas na automação.`;
   else if (observed && source.connected === true && !stale && eligible.some(item => !state.sessions[`${item.platform || 'twitch'}:${item.name}`])) waiting = 'Há canais elegíveis sem sessão automática. Sincronize novamente e confira os limites.';
   $('#pokeidle-waiting').hidden = !waiting;
   $('#pokeidle-waiting').textContent = waiting;
@@ -449,7 +449,7 @@ function render(state) {
   addMode.value = selectedMode || 'default';
   $('#add-kick-options').hidden = $('#platform').value !== 'kick';
   $('#summary').textContent = `${Object.keys(state.sessions).length} de ${state.channels.length} canais abertos`;
-  $('#queue-summary').textContent = `${state.queue.length} na fila · limite de ${state.settings.maxConcurrent ?? 3} abas`;
+  $('#queue-summary').textContent = `${state.queue.length} aguardando abertura · sem limite de abas`;
   $('#queue-summary').hidden = state.queue.length === 0;
   $('#xp-total').textContent = Number.isFinite(state.summary.totals?.xpDelta) ? `${formatNumber(state.summary.totals.xpDelta)} XP` : 'Sem comparação';
   $('#bonus-total').textContent = String((state.summary.bonusItems || []).filter(bonus => bonus.status === 'ready').length);
@@ -615,4 +615,4 @@ $('#connect-twitch-chat').addEventListener('click', async () => {
 $('#disconnect-twitch-chat').addEventListener('click', () => command({ type: 'disconnectTwitchChat', forget: true }));
 $('#toggle-automation').addEventListener('click', () => command({ type: lastState?.automationPaused ? 'resumeAutomation' : 'pauseAutomation' }));
 $('#measurement-at').value = localInput(Date.now());
-command({ type: 'status' });
+command({ type: 'enableUnlimitedAutomation' });

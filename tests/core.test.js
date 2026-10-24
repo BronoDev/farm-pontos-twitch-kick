@@ -273,3 +273,24 @@ test('Firefox Android cria abas silenciadas sem usar tabs.update muted não supo
   await b.run({ type: 'stopAll' });
   assert.equal(b.tabs.size, 0);
 });
+
+
+test('modo sem limite persiste e abre mais vídeos que os tetos antigos, mantendo Fechar todos', async () => {
+  const b = browser(true);
+  const originalGet = b.api.storage.local.get;
+  b.api.storage.local.get = async keys => {
+    const values = await originalGet();
+    return Object.fromEntries(keys.filter(key => Object.hasOwn(values, key)).map(key => [key, values[key]]));
+  };
+  await b.run({ type: 'enableUnlimitedAutomation' });
+  const run = createController(b.api);
+  for (let i = 0; i < 15; i++) await run({ type: 'add', platform: 'kick', input: `canal${i}` });
+  let state = await run({ type: 'startAll' });
+  assert.equal(Object.keys(state.sessions).length, 15);
+  assert.equal(state.queue.length, 0);
+  state = await run({ type: 'setSettings', settings: { maxConcurrent: 1, maxKickLives: 1 } });
+  assert.equal(Object.keys(state.sessions).length, 15);
+  state = await run({ type: 'stopAll' });
+  assert.equal(Object.keys(state.sessions).length, 0);
+  assert.equal(state.automationPaused, true);
+});

@@ -129,6 +129,7 @@ async function syncPokeIdleKick() {
 }
 
 async function initialize() {
+  await enqueue({ type: 'enableUnlimitedAutomation' });
   if (api.alarms) {
     const existing = await api.alarms.get('chat-leve-tick');
     if (!existing) await api.alarms.create('chat-leve-tick', { delayInMinutes: 1, periodInMinutes: 1 });

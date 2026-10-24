@@ -60,7 +60,7 @@ function createController(api, { twitchChat } = {}) {
     return androidGecko;
   }
   async function read() {
-    const raw = await api.storage.local.get(['channels', 'sessions', 'kickLive', 'bonuses', 'measurements', 'schedules', 'settings', 'queue', 'queueSources', 'alerts', 'activeReminderIds', 'sessionHistory', 'automationPaused', 'pausedChannels', 'pokeidle', 'uiPreferences', 'liveWatch', 'twitchChatStatus', 'automationsMigrated', 'platformRoutingMigrated']);
+    const raw = await api.storage.local.get(['unlimitedAutomation', 'channels', 'sessions', 'kickLive', 'bonuses', 'measurements', 'schedules', 'settings', 'queue', 'queueSources', 'alerts', 'activeReminderIds', 'sessionHistory', 'automationPaused', 'pausedChannels', 'pokeidle', 'uiPreferences', 'liveWatch', 'twitchChatStatus', 'automationsMigrated', 'platformRoutingMigrated']);
     const channels = Array.isArray(raw.channels) ? raw.channels : [];
     const rewards = normalizeRewardsState(raw);
     // Os horários antigos deixam de rodar após a substituição da agenda na interface.
@@ -311,7 +311,9 @@ function createController(api, { twitchChat } = {}) {
       }
 
     }
-    if (message.type === 'setLiveWatch') {
+    if (message.type === 'enableUnlimitedAutomation') {
+      state.unlimitedAutomation = true;
+    } else if (message.type === 'setLiveWatch') {
       if (typeof message.enabled !== 'boolean' || !Array.isArray(message.channelIds) || (message.enabled && !message.channelIds.length) || message.channelIds.length > 100 || message.channelIds.some(id => typeof id !== 'string' || !state.channels.some(item => item.id === id))) throw new Error('Configuração de automação inválida.');
       if (message.twitchMode !== undefined && !['chat', 'irc'].includes(message.twitchMode)) throw new Error('Modo de chat Twitch inválido.');
       state.liveWatch.enabled = message.enabled;
@@ -482,7 +484,7 @@ function createController(api, { twitchChat } = {}) {
       }
     }
 
-    if (message.type === 'setSettings') {
+    if (message.type === 'setSettings' && !state.unlimitedAutomation) {
       const ordered = state.channels.filter(c => state.sessions[c.id]).sort((a, b) => (a.priority || 0) - (b.priority || 0));
       for (const item of ordered) {
         const session = state.sessions[item.id];

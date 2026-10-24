@@ -51,3 +51,7 @@ Chat conectado, vídeo ativo e registro local não comprovam crédito de XP. Lei
 ## Painel 0.11.1
 
 O painel usa o PokeIdle como origem principal, visível desde o primeiro acesso. O cadastro e a lista manual de streamers foram retirados da apresentação. Abra o jogo e carregue seus canais para sincronizar; a Kick conserva sua sincronização dedicada. Retomar automação respeita a elegibilidade dos canais e os limites, sem iniciar todos os registros manualmente. Dados anteriores continuam armazenados.
+
+## Automação sem limite (0.11.2)
+
+Ao atualizar ou abrir o painel, a automação passa a permitir todas as sessões elegíveis simultaneamente, sem teto de abas ou vídeos Kick. Os antigos campos de limites não aparecem mais. Pausas, origem recente e confirmação de live continuam valendo. Mais lives simultâneas podem consumir mais memória, processamento e rede.
